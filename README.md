@@ -28,6 +28,12 @@ framework), start and stop them, open a VM's console or an SSH session in a kitt
 them. VMs run in Shoji Machines, so they keep running when Shoji restarts; quitting Shoji Machines
 shuts them down cleanly. VMs live in `~/.config/shoji/vms`.
 
+## Containers (Docker)
+
+**Mod+O** opens **Shoji Containers**, the companion app from the sibling repo `shoji-containers`:
+Docker containers (grouped by Compose project, live CPU/memory) and images — start, stop,
+restart, remove, pull, prune; shell, logs and `docker run` in kitty windows.
+
 ## Keybindings
 
 Mod is **⌥** by default (Settings: ⌥, ⌃⌥ or ⌘) — the Lucent config's ALT-mod bindings.
@@ -51,6 +57,7 @@ Mod is **⌥** by default (Settings: ⌥, ⌃⌥ or ⌘) — the Lucent config's
 | Mod+⌃Tab / Mod+` | Cycle windows / last window |
 | Mod+, / Mod+/ | Settings / keybindings sheet |
 | Mod+M | Machines (Linux VMs) |
+| Mod+O | Containers (Docker) |
 | Mod+⇧M | Exit Shoji |
 
 Mouse: drag a tiled window onto another to swap them; drag its edges to resize the split.

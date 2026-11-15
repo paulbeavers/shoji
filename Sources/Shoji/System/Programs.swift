@@ -55,10 +55,19 @@ enum Programs {
     /// it with Launch Services).
     static let machinesBundleID = "dev.shoji.Machines"
 
+    /// Shoji Containers, the Docker companion app (its own repo, ../shoji-containers).
+    static let containersBundleID = "dev.shoji.Containers"
+
     /// Mod+M: open Shoji Machines, or bring its window forward.
-    static func openMachines() {
-        guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: machinesBundleID) else {
-            ShojiLog.write("Shoji Machines isn't installed (build ../shoji-machines)")
+    static func openMachines() { openCompanion(machinesBundleID, name: "Shoji Machines", repo: "shoji-machines") }
+
+    /// Mod+O: open Shoji Containers, or bring its window forward.
+    static func openContainers() { openCompanion(containersBundleID, name: "Shoji Containers", repo: "shoji-containers") }
+
+    /// A companion app, found through Launch Services (each one's build registers it).
+    private static func openCompanion(_ bundleID: String, name: String, repo: String) {
+        guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) else {
+            ShojiLog.write("\(name) isn't installed (build ../\(repo))")
             NSSound.beep()
             return
         }
