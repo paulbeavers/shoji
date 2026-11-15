@@ -25,6 +25,8 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
         let s = SettingsWindow()
         s.view.frame = CGRect(x: 0, y: 0, width: 720, height: 900)
         s.layout()
+        s.view.frame.size.height = max(900, s.doc.frame.height) // the whole form, not just the top
+        s.layout()
         s.view.layoutSubtreeIfNeeded()
         let rep = s.view.bitmapImageRepForCachingDisplay(in: s.view.bounds)!
         s.view.cacheDisplay(in: s.view.bounds, to: rep)
@@ -107,7 +109,24 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
                get: { c.windowOpacity }, set: { [weak self] in c.windowOpacity = $0; self?.scheduleWindowSettingsWrite() })
         toggle("Hide title bars", note: "No title bar or buttons (kitty: new windows). Mod+Q still closes them",
                get: { c.hideTitleBars }, set: { [weak self] in c.hideTitleBars = $0; self?.scheduleWindowSettingsWrite() })
-        slider("Terminal padding", 0...24, step: 1, fmt: "%.0f pt",
+
+        header("Terminal", "kitty's font and padding — written to ~/.config/kitty/shoji.conf")
+        let own = ThemeSync.kittyOwnFont()
+        let ownFont = "kitty's setting (\(own.family ?? "Menlo"))"
+        var fonts = [ownFont] + ThemeSync.monospacedFamilies()
+        if !c.terminalFont.isEmpty, !fonts.contains(c.terminalFont) { fonts.append(c.terminalFont) } // not installed (any more)
+        popup("Font", options: fonts, get: { c.terminalFont.isEmpty ? ownFont : c.terminalFont },
+              set: { [weak self] t in c.terminalFont = t == ownFont ? "" : t; self?.scheduleWindowSettingsWrite() })
+        let ownSize = "kitty's setting (\(ThemeSync.fontSizeString(own.size ?? 13)) pt)"
+        var sizes = [ownSize] + [9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 20, 22, 24, 28].map { "\($0) pt" }
+        let current = { c.terminalFontSize > 0 ? "\(ThemeSync.fontSizeString(c.terminalFontSize)) pt" : ownSize }
+        if !sizes.contains(current()) { sizes.append(current()) }
+        popup("Font size", options: sizes, get: current,
+              set: { [weak self] t in
+                  c.terminalFontSize = t == ownSize ? 0 : Double(t.replacingOccurrences(of: " pt", with: "")) ?? 0
+                  self?.scheduleWindowSettingsWrite()
+              })
+        slider("Padding", 0...24, step: 1, fmt: "%.0f pt",
                get: { c.terminalPadding }, set: { [weak self] in c.terminalPadding = $0; self?.scheduleWindowSettingsWrite() })
 
         header("Config file", "Keybindings, window rules and startup programs, hyprland.conf-style")
@@ -312,6 +331,7 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
         bind(reset) { [weak self] in
             Config.shared.resetToDefaults()
             self?.refreshers.forEach { $0() }
+            ThemeSync.writeKittySettings() // kitty's opacity, padding and font back to the defaults too
         }
         reset.sizeToFit()
         let note = label("Saved automatically to " + (Config.settingsURL.path as NSString).abbreviatingWithTildeInPath,

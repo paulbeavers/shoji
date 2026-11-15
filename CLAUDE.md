@@ -247,6 +247,12 @@ that). Shoji can't change another app's corner radius, only keep the text clear 
 `ThemeSync.refreshKittySettings()` updates an existing kitty shoji.conf (so new keys arrive without
 touching Settings); it never creates one, and it only rewrites/reloads kitty when the text changed.
 
+Settings → **Terminal** (2026-11-15): Font (installed fixed-pitch families) and Font size →
+`font_family` / `font_size` in kitty's shoji.conf; each starts on "kitty's setting (…)", which
+writes nothing (label read from kitty.conf itself, `ThemeSync.kittyOwnFont`, incl. kitty's newer
+`family="…"` syntax; kitty's defaults Menlo 13). Padding moved there from Windows. Reset to
+defaults also rewrites kitty's file. `--preview-settings` renders the whole form.
+
 There is **no corner-rounding setting** (removed 2026-11-15): it only ever rounded Shoji's launcher
 and keybindings sheet, but users expected their windows' corners to change, which macOS doesn't
 allow (yabai needs SIP off for it). `Config.rounding` is a constant; old `rounding` keys are ignored.

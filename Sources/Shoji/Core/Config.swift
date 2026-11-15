@@ -93,6 +93,8 @@ struct SettingsFile: Codable {
     var hideTitleBars: Bool?
     var mouseBinds: Bool?
     var terminalPadding: Double?
+    var terminalFont: String?
+    var terminalFontSize: Double?
 }
 
 /// Runtime configuration, modelled on hyprland.conf's `general` and `decoration` sections.
@@ -138,6 +140,9 @@ final class Config {
     /// Keeps text out of the rounded corners — macOS rounds them into the text when the title
     /// bar is hidden.
     var terminalPadding: Double = 8
+    /// kitty's font family and size (font_family / font_size). Empty / 0 = leave kitty.conf's own.
+    var terminalFont = ""
+    var terminalFontSize: Double = 0
     var themeSetsAccent = true
     var modifierKey: ModifierKey = .option
     var modSymbol: String { modifierKey.symbol }
@@ -226,7 +231,8 @@ final class Config {
             themeSetsAppearance: themeSetsAppearance, themeSetsWallpaper: themeSetsWallpaper,
             themeSetsKitty: themeSetsKitty, themeSetsAccent: themeSetsAccent,
             kittyOpacity: nil, kittyHideTitlebar: nil, windowOpacity: windowOpacity, hideTitleBars: hideTitleBars,
-            mouseBinds: mouseBinds, terminalPadding: terminalPadding)
+            mouseBinds: mouseBinds, terminalPadding: terminalPadding,
+            terminalFont: terminalFont, terminalFontSize: terminalFontSize)
     }
 
     func apply(_ f: SettingsFile) {
@@ -240,6 +246,8 @@ final class Config {
         if let v = f.focusOnActivate { focusOnActivate = v }
         if let v = f.mouseBinds { mouseBinds = v }
         if let v = f.terminalPadding { terminalPadding = min(24, max(0, v)) }
+        if let v = f.terminalFont { terminalFont = v }
+        if let v = f.terminalFontSize { terminalFontSize = v == 0 ? 0 : min(36, max(6, v)) }
         if let v = f.modifierKey.flatMap(ModifierKey.init(rawValue:)) { modifierKey = v }
         if let v = f.floatingWorkspaces { floatingWorkspaces = Set(v) }
         if let v = f.terminalApp { terminalApp = v }
