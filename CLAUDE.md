@@ -111,7 +111,33 @@ build/Shoji.app/Contents/MacOS/Shoji --preview out.png   # offscreen render of t
 - kitty: ⌘↩ makes panes inside one OS window (kitty's own layout — no gaps/rounding); ⌘N / Mod+↩
   make OS windows that Shoji tiles. The user's startup.session opens 2 panes; that's theirs.
 
-## Shoji Machines (VMs) — separate repo `../shoji-machines`
+## Session: windows stay on their workspaces across restarts (2026-11-14)
+
+`~/.config/shoji/session.json` (`WM/Session.swift`): per workspace the dwindle tree (split axes,
+ratios, window ids at the leaves), floating windows (frame, pinned), focus, plus the current
+workspace. Saved 1 s after any change (`notifyChange`) and on quit *before* `restoreAllWindows`
+brings parked windows on screen. At start the scan matches windows by window-server id (stable
+while the app keeps running — the Shoji-restart case): floating ones go straight to their
+workspace; tiled ones wait in `restoredTiled` until `finishRestore()` rebuilds each tree
+(`Node.build`, collapsing splits whose windows are gone), re-inserts windows not in the session,
+parks other workspaces' windows and returns to the saved workspace. Before this, every window
+landed on workspace 1 after a restart (user report).
+
+## Windows settings (Settings → Windows)
+
+`windowOpacity` (0.3–1) and `hideTitleBars` are window appearance Shoji applies wherever it can:
+kitty, through `~/.config/kitty/shoji.conf` (`background_opacity`, `hide_window_decorations
+titlebar-only`; included at the end of kitty.conf), and Shoji Machines, which reads the keys from
+settings.json. They were `kittyOpacity` / `kittyHideTitlebar` under Terminal until 2026-11-14 (user:
+"is it weird to have machines read kitty config?"); the old keys are still read, never written.
+
+## Companion apps: `../shoji-machines` (Mod+M) and `../shoji-containers` (Mod+O)
+
+Both are separate repos and regular apps, found by bundle id (`dev.shoji.Machines`,
+`dev.shoji.Containers`) through Launch Services — `Programs.openCompanion`. Both read Shoji's
+settings.json (theme, Windows settings) and follow `dev.shoji.settingsChanged`.
+
+### Shoji Machines (VMs) — separate repo `../shoji-machines`
 
 The VM companion app is its own repo (user decision 2026-11-14: first bundled here, then split
 out). Shoji only opens it: Mod+M / "Machines…" → `Programs.openMachines()` finds bundle id
