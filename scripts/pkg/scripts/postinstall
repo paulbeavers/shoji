@@ -1,0 +1,25 @@
+#!/bin/bash
+# Shoji.pkg postinstall (runs as root): register the apps for the logged-in user, so Shoji's
+# Mod+M / Mod+O find Shoji Machines / Shoji Containers, and restart Shoji if it was running.
+STATE=/tmp/dev.shoji.install-state
+LSREGISTER=/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
+USER_NAME="$(stat -f %Su /dev/console)"
+USER_ID="$(id -u "$USER_NAME" 2>/dev/null || echo 0)"
+
+as_user() {
+  if [ "$USER_ID" != 0 ] && [ "$USER_NAME" != root ]; then
+    launchctl asuser "$USER_ID" sudo -u "$USER_NAME" "$@"
+  fi
+}
+
+for app in "Shoji" "Shoji Machines" "Shoji Containers"; do
+  # Installed packages carry no download quarantine, but clear any that came along.
+  xattr -dr com.apple.quarantine "/Applications/$app.app" 2>/dev/null || true
+  as_user "$LSREGISTER" -f "/Applications/$app.app" || true
+done
+
+if grep -q shoji-was-running "$STATE" 2>/dev/null; then
+  as_user open "/Applications/Shoji.app" || true
+fi
+rm -f "$STATE"
+exit 0

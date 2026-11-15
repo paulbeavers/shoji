@@ -1,0 +1,20 @@
+#!/bin/bash
+# Shoji.pkg preinstall (runs as root): quit the Shoji apps so they can be replaced.
+# Shoji Machines quits cleanly on SIGTERM — its running VMs are shut down first.
+STATE=/tmp/dev.shoji.install-state
+rm -f "$STATE"
+running() { pgrep -f "/$1.app/Contents/MacOS/$1\$" >/dev/null 2>&1; }
+
+if running "Shoji"; then echo "shoji-was-running" >> "$STATE"; fi
+for app in "Shoji Containers" "Shoji Machines" "Shoji"; do
+  if running "$app"; then
+    pkill -TERM -f "/$app.app/Contents/MacOS/$app\$" || true
+    # Shoji Machines may need a while to shut its VMs down.
+    for _ in $(seq 1 45); do running "$app" || break; sleep 1; done
+    if running "$app"; then
+      echo "$app didn't quit; quit it (⌘Q) and run the installer again." >&2
+      exit 1
+    fi
+  fi
+done
+exit 0
