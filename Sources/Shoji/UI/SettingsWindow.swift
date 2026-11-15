@@ -67,14 +67,14 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
         toggle("Follow apps to their workspace", note: "Activating a window elsewhere (Dock, ⌘Tab) switches to its workspace",
                get: { self.c.focusOnActivate }, set: { self.c.focusOnActivate = $0 })
 
+        header("Windows", "Applied to kitty and Shoji Machines")
+        slider("Window opacity", 0.3...1, step: 0.01, fmt: "%.0f%%", scale: 100,
+               get: { self.c.windowOpacity }, set: { self.c.windowOpacity = $0; self.scheduleWindowSettingsWrite() })
+        toggle("Hide title bars", note: "No title bar or buttons (kitty: new windows). Mod+Q still closes them",
+               get: { self.c.hideTitleBars }, set: { self.c.hideTitleBars = $0; self.scheduleWindowSettingsWrite() })
+
         header("Workspaces", "Floating workspaces let windows overlap and be moved freely")
         workspaceModes()
-
-        header("Terminal", "kitty — what Mod+↩ opens")
-        slider("Window opacity", 0.3...1, step: 0.01, fmt: "%.0f%%", scale: 100,
-               get: { self.c.kittyOpacity }, set: { self.c.kittyOpacity = $0; self.scheduleKittyWrite() })
-        toggle("Hide kitty's title bar", note: "No title bar or buttons (new kitty windows; Mod+Q still closes them)",
-               get: { self.c.kittyHideTitlebar }, set: { self.c.kittyHideTitlebar = $0; self.scheduleKittyWrite() })
 
         header("Theme also changes", "Applied whenever you pick a theme")
         toggle("macOS appearance", note: "Dark or Light, to match the theme (macOS asks once to allow it)",
@@ -103,12 +103,13 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
         footer()
     }
 
-    /// Write kitty's opacity a moment after the slider stops moving (each write reloads kitty).
-    private var kittyWrite: DispatchWorkItem?
-    private func scheduleKittyWrite() {
-        kittyWrite?.cancel()
+    /// Pass the window settings on to kitty a moment after the slider stops moving (each write
+    /// reloads kitty). Shoji Machines picks them up from settings.json itself.
+    private var windowSettingsWrite: DispatchWorkItem?
+    private func scheduleWindowSettingsWrite() {
+        windowSettingsWrite?.cancel()
         let work = DispatchWorkItem { ThemeSync.writeKittySettings() }
-        kittyWrite = work
+        windowSettingsWrite = work
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.25, execute: work)
     }
 

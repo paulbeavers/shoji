@@ -87,8 +87,10 @@ struct SettingsFile: Codable {
     var themeSetsWallpaper: Bool?
     var themeSetsKitty: Bool?
     var themeSetsAccent: Bool?
-    var kittyOpacity: Double?
-    var kittyHideTitlebar: Bool?
+    var kittyOpacity: Double?        // old name of windowOpacity (still read)
+    var kittyHideTitlebar: Bool?     // old name of hideTitleBars (still read)
+    var windowOpacity: Double?
+    var hideTitleBars: Bool?
 }
 
 /// Runtime configuration, modelled on hyprland.conf's `general` and `decoration` sections.
@@ -121,10 +123,12 @@ final class Config {
     var themeSetsAppearance = true
     var themeSetsWallpaper = true
     var themeSetsKitty = true
-    /// kitty's background_opacity (Settings → Terminal). Shoji assumes kitty is the terminal.
-    var kittyOpacity: Double = 0.9
-    /// kitty's hide_window_decorations titlebar-only (no title bar or traffic-light buttons).
-    var kittyHideTitlebar = false
+    // Windows (Settings → Windows): window appearance Shoji applies everywhere it can — kitty
+    // (via ~/.config/kitty/shoji.conf) and Shoji Machines (reads these keys from settings.json).
+    /// Background opacity, 0.3…1.
+    var windowOpacity: Double = 0.9
+    /// No title bar or traffic-light buttons (kitty: hide_window_decorations titlebar-only).
+    var hideTitleBars = false
     var themeSetsAccent = true
     var modifierKey: ModifierKey = .option
     var modSymbol: String { modifierKey.symbol }
@@ -212,7 +216,7 @@ final class Config {
             floatApps: floatApps.sorted(), blur: nil,
             themeSetsAppearance: themeSetsAppearance, themeSetsWallpaper: themeSetsWallpaper,
             themeSetsKitty: themeSetsKitty, themeSetsAccent: themeSetsAccent,
-            kittyOpacity: kittyOpacity, kittyHideTitlebar: kittyHideTitlebar)
+            kittyOpacity: nil, kittyHideTitlebar: nil, windowOpacity: windowOpacity, hideTitleBars: hideTitleBars)
     }
 
     func apply(_ f: SettingsFile) {
@@ -234,8 +238,8 @@ final class Config {
         if let v = f.themeSetsAppearance { themeSetsAppearance = v }
         if let v = f.themeSetsWallpaper { themeSetsWallpaper = v }
         if let v = f.themeSetsKitty { themeSetsKitty = v }
-        if let v = f.kittyHideTitlebar { kittyHideTitlebar = v }
-        if let v = f.kittyOpacity { kittyOpacity = min(1, max(0.3, v)) }
+        if let v = f.hideTitleBars ?? f.kittyHideTitlebar { hideTitleBars = v }
+        if let v = f.windowOpacity ?? f.kittyOpacity { windowOpacity = min(1, max(0.3, v)) }
         if let v = f.themeSetsAccent { themeSetsAccent = v }
     }
 
