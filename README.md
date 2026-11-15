@@ -19,6 +19,20 @@ click one to switch, right-click for the menu. Quitting Shoji (Mod+Shift+M, the 
 
 Requirements: macOS 13 or later, a Swift toolchain (Xcode Command Line Tools). No SIP changes.
 
+## Installing on another Mac
+
+```bash
+./scripts/package.sh      # builds Shoji + ../shoji-machines + ../shoji-containers
+                          # → build/Shoji-<date>-<commit>.pkg, a .dmg with it + a README,
+                          #   and build/Shoji.dmg (the latest, under a fixed name)
+```
+
+Copy the `.pkg` (or the `.dmg`) to the other Mac and double-click it: the macOS Installer puts
+**Shoji**, **Shoji Machines** and **Shoji Containers** in /Applications. The package isn't
+notarized, so the first time macOS may refuse it — System Settings → Privacy & Security →
+**Open Anyway** (or Control-click → Open). Then open Shoji and allow it under Accessibility. The
+other Mac needs Apple Silicon, macOS 13+ and kitty (Docker for Containers) — no developer tools.
+
 ## Machines (Linux VMs)
 
 **Mod+M** opens **Shoji Machines**, the companion app from the sibling repo `shoji-machines`
@@ -61,7 +75,27 @@ Mod is **⌥** by default (Settings: ⌥, ⌃⌥ or ⌘) — the Lucent config's
 | Mod+I | Stats (Shoji, managed apps, system) |
 | Mod+⇧M | Exit Shoji |
 
-Mouse: drag a tiled window onto another to swap them; drag its edges to resize the split.
+Mouse: **Mod + drag** moves any window (drop a tile on another to swap them), **Mod + right-drag**
+resizes it from the nearest corner (tiles move their split borders). Dragging a tile's title bar
+or edges works too.
+
+## Config file
+
+`~/.config/shoji/shoji.conf` (Settings → Config file, or "Edit shoji.conf…" in the menu bar
+menu) is hyprland.conf-style and reloads on save:
+
+```
+bind = $mod, T, exec, open -na kitty --args htop
+bind = $mod SHIFT, B, exec, open -na "Google Chrome"
+windowrule = float, app:Calculator
+windowrule = workspace 3 silent, app:Mail
+windowrule = size 1100 700, app:kitty, title:^htop
+workspace = 9, floating
+exec-once = open -ga Docker
+```
+
+The first start writes a commented file listing every key, dispatcher and rule. Errors show in
+a red banner (the rest still applies); `Shoji --check-config` prints what it understood.
 
 ## Good to know
 

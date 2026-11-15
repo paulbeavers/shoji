@@ -23,6 +23,25 @@ build/Shoji.app/Contents/MacOS/Shoji --preview out.png   # offscreen render of t
   `Resources/Themes` (committed copy, so the repo builds alone).
 - Config in `~/.config/shoji/` (`SHOJI_CONFIG_DIR` overrides — use it in tests).
 
+## Packaging (`scripts/package.sh`, user request 2026-11-14)
+
+Builds all three repos (`../shoji-machines`, `../shoji-containers` must sit next to shoji) and makes
+`build/Shoji-<date>-<commit>.pkg` (macOS Installer: welcome/conclusion pages in
+`scripts/pkg/resources`, arm64 + macOS 13 checks in the distribution) and a `.dmg` holding the
+pkg, README.txt and VERSIONS.txt, also copied to `build/Shoji.dmg` (fixed name, latest build). The user wanted a native installer, not a shell script (an
+`install.sh` + `.command` was tried first — and macOS silently refuses to *execute* a script
+from a quarantined DMG anyway).
+- `pkgbuild --analyze` → component plist with **`BundleIsRelocatable false`** (else the Installer
+  installs into wherever an app with the same bundle id already is — the repos' build/ folders
+  on a dev Mac), `BundleIsVersionChecked false` (CFBundleVersion is always 1). The keys may be
+  missing from the analysis — Set or Add them.
+- `scripts/pkg/scripts/preinstall` (root): SIGTERM the running apps (Shoji Machines' handler
+  shuts VMs down cleanly; waits up to 45 s; remembers whether Shoji was running).
+  `postinstall`: `lsregister -f` each app as the console user (`launchctl asuser … sudo -u`),
+  clear quarantine, reopen Shoji if it was running.
+- Unsigned/not notarized (no Developer ID): Gatekeeper asks once (Open Anyway). Never install
+  the package on the dev Mac from a test — inspect it with `pkgutil --expand-full` instead.
+
 ## Architecture (Sources/Shoji)
 
 | File | Role |
@@ -123,6 +142,28 @@ workspace; tiled ones wait in `restoredTiled` until `finishRestore()` rebuilds e
 (`Node.build`, collapsing splits whose windows are gone), re-inserts windows not in the session,
 parks other workspaces' windows and returns to the saved workspace. Before this, every window
 landed on workspace 1 after a restart (user report).
+
+## shoji.conf and mouse binds (user request 2026-11-14)
+
+- **`System/UserConfig.swift`** — `~/.config/shoji/shoji.conf`, hyprland.conf-style: `$var = …`,
+  `bind = MODS, KEY, dispatcher, arg` (MODS `$mod` = Settings' modifier, SHIFT CTRL ALT CMD;
+  `Key.named`), `windowrule = EFFECT, app:<name|bundle id>, title:<regex>` (float, tile, center,
+  size w h, workspace n [silent]), `workspace = N, floating`, `exec`, `exec-once` (once per
+  boot — marker `/tmp/shoji-<uid>/exec-once-<kern.boottime>` — not on Shoji restarts). Written
+  commented on first start (`defaultFile`); reloaded via a DispatchSource on the config folder
+  (editors replace files) with mtime check; errors → log + `ConfigErrorBanner` (red, 10 s).
+  Config binds come first in `Bindings.all()` and replace built-ins on the same key+modifiers;
+  `Dispatcher` runs them. Rules apply in `addWindow` (not to windows restored from the session).
+  `Shoji --check-config` prints the parse. Settings keeps the visual options.
+- **`WM/MouseBinds.swift`** — CGEventTap (session, head insert; re-enabled on
+  tapDisabledByTimeout). Exactly the Settings modifier + left/right mouse down on a managed window
+  (CGWindowList topmost) is swallowed and starts a drag: floating = move/resize frame; tiled move =
+  window follows the pointer, drop swaps with the tile under the pointer; tiled resize =
+  `LayoutTree.adopt` live. Resize from the corner nearest the grab. ~60 Hz throttle.
+- **No scratchpad (removed 2026-11-14, user decision).** A Hyprland-style special workspace
+  (Mod+S, a hidden layer of windows that opened a kitty shell when empty, like Lucent's
+  special:magic) was built and removed: to the user "scratchpad" means MacLucent's notes app, and
+  a key that opens a shell made no sense to them. Don't re-add a special workspace unless asked.
 
 ## Shoji's own windows
 
