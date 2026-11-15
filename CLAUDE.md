@@ -315,8 +315,71 @@ pick and by "Apply now".
 
 ## Ideas / next stages
 
-- Multi-monitor, scrolling layout
-  (Lucent's Mod+T), animations, inactive dim, per-app rules file, wallpaper per theme.
+Discussed with the user 2026-11-15 and **put on hold** ("lets hold off for now" / "later") — don't
+start these unprompted; when the user picks one up, start from the notes here.
+
+### Multi-monitor support (planned, not started)
+Today only the main display is managed (`WindowManager.screen` = `NSScreen.screens.first`;
+windows centred elsewhere are ignored in `addWindow`; parking at the main screen's bottom-right).
+Proposed design (Hyprland/AeroSpace model — user hasn't chosen yet):
+- One shared pool of 10 workspaces; each display shows one. Mod+N: if N is visible on another
+  display, focus that display; else show N on the focused display (the focused window's, else the
+  pointer's). New windows join the workspace of the display they open on.
+- Mod+arrows cross display edges (nearest window); Mod+Shift+arrows at an edge move the window to
+  the next display; dragging (Mod+drag or title bar) onto another display moves it there.
+- Menu-bar pills are one image on every display's menu bar: focused workspace = gradient,
+  workspaces visible on other displays = outlined.
+- **Parking** is the hard part: macOS keeps part of every window on some screen, so pick per window
+  a display corner with no other display beyond it (bottom-right, or bottom-left with the window
+  extending left); stacked layouts with no free corner → least-bad corner + log (AeroSpace has the
+  same limit).
+- Hot-plug: a vanished display's workspace is parked on the others; displays remembered by
+  hardware UUID (`CGDisplayCreateUUIDFromDisplayID`), also in session.json.
+- shoji.conf: `workspace = 6, monitor:2` / `monitor:<name>`; dispatchers `focusmonitor`,
+  `movewindowtomonitor`, `moveworkspacetomonitor` (l|r|next).
+- Launcher, help sheet, Settings, Stats on the focused display. Single-display behaviour must stay
+  exactly as today.
+- Two testable steps: (1) monitor model, per-display layout, adoption, parking, hot-plug, pills;
+  (2) cross-display focus/move, drag, dispatchers, `monitor:` rule, per-display session.
+- ~400–600 lines, mostly WindowManager.swift (+ Workspace, WorkspaceMenu, Launcher, Session,
+  UserConfig). The dev Mac has **one display** (Dell U4025QW) — the user must test on two.
+- Open questions for the user: shared pool vs fixed split (1–5 left, 6–10 right); their display
+  arrangement and which Mac; one go or step 1 first.
+
+### Native macOS Spaces — investigated, recommended against
+Reading works without SIP through private SkyLight calls (`SLSCopyManagedDisplaySpaces`,
+`SLSGetActiveSpace`, `SLSCopySpacesForWindows` — checked on this Mac). Controlling Spaces doesn't:
+moving windows / creating / switching Spaces is only honoured from the Dock process (yabai's
+scripting addition, SIP partly off). Without SIP: switch by posting "Switch to Desktop N" (off by
+default here — needs enabling), with macOS's ~0.5 s animation; move windows by the Amethyst trick
+(fake title-bar drag + switch — fails for kitty without a title bar); Spaces can't be created;
+"Automatically rearrange Spaces" (on by default) must be turned off. Would rewrite most of the WM.
+Gains (Mission Control/swipes, native fullscreen, no parking quirks) don't outweigh losing
+instant, reliable workspaces — same choice as AeroSpace. Cheaper fix for the one real downside
+(windows left parked off-screen if Shoji crashes): a "bring all windows back" menu command.
+
+### Homebrew (planned, not started)
+Own tap, not homebrew/cask (that needs notability — the repo had 0 stars; signing/notarization
+already done). Repo `paulbeavers/homebrew-shoji`, `Casks/shoji.rb`: `pkg "Install Shoji.pkg"`,
+`depends_on macos: ">= :ventura"`, `arch: :arm64`, `uninstall quit:` the three bundle ids +
+`pkgutil: "dev.shoji.pkg"` + `delete:` the Nerd Fonts in /Library/Fonts (copied by postinstall, not
+in the receipt), `zap trash: "~/.config/shoji"`. Needs real version numbers (every build is 0.1.0
+and files are `Shoji-<date>-<commit>.dmg`) and `deploy-web.sh` updating the cask (version +
+sha256) and pushing the tap. The name "shoji" is free in Homebrew. A .pkg cask asks for the
+password; an `app`-stanza cask (+ font stanzas) would not, at the cost of a second package format.
+Install: `brew install --cask paulbeavers/shoji/shoji`.
+
+### Compared with AeroSpace / yabai / Amethyst (2026-11-15)
+Shoji's gaps, beyond multi-monitor: a single layout (no master/stack, columns, accordion), no
+CLI/socket for scripts and status bars (`shoji workspace 3`, `shoji query`), no binding modes, no
+scratchpad/special workspace (removed at the user's request), no animations. Suggested order:
+multi-monitor → small CLI → a second layout.
+
+### Smaller ideas
+- Scrolling layout (Lucent's Mod+T), animations, inactive dim.
+- Website: a line in "Your look" about the bundled Nerd Fonts (offered, not asked for yet).
+- Companion apps still need kitty for shells/consoles (Containers alerts when it's missing);
+  a Terminal fallback there is a bigger change than Shoji's.
 - Name: "Shoji" is also used by a macOS window-zone app with a pending software trademark (found
   by the MacLucent rename check). The user published the public site anyway (2026-11-15) — worth
   checking before anything commercial.
