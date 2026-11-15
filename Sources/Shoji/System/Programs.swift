@@ -7,6 +7,7 @@ enum Programs {
     enum Role { case terminal, browser, editor, files }
 
     static let kitty = "net.kovidgoyal.kitty"
+    static let appleTerminal = "com.apple.Terminal"
 
     /// Candidates offered in Settings (kitty is the default).
     static let terminals = ["com.mitchellh.ghostty", "net.kovidgoyal.kitty", "com.github.wez.wezterm", "org.alacritty",
@@ -17,7 +18,11 @@ enum Programs {
     static func bundleID(for role: Role) -> String? {
         let c = Config.shared
         switch role {
-        case .terminal: return c.terminalApp.isEmpty ? kitty : c.terminalApp // kitty is assumed installed
+        case .terminal:
+            // The one picked in Settings, else kitty — and if that isn't installed (or was
+            // removed since), the Mac's own Terminal, so Mod+Return always opens something.
+            if !c.terminalApp.isEmpty, isInstalled(c.terminalApp) { return c.terminalApp }
+            return isInstalled(kitty) ? kitty : appleTerminal
         case .editor: return c.editorApp.isEmpty ? editors.first(where: isInstalled) : c.editorApp
         case .files: return "com.apple.finder"
         case .browser:

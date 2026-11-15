@@ -68,8 +68,8 @@ zone `pbcs.io`.
 - Preview before publishing: render the staged page with a small WKWebView snapshot tool
   (`takeSnapshot`) at 1280 and 390 px wide and look at it. Remove old PNGs first — a failed run
   once left stale images that looked like the new page.
-- Open question (parked by the user): Mod+Return opens kitty even if it isn't installed; the
-  page doesn't mention kitty. A fallback to Terminal was written and reverted ("not now").
+- The page doesn't mention kitty: Mod+Return falls back to the Mac's Terminal when kitty isn't
+  installed (`Programs.bundleID(for: .terminal)`: Settings' pick if installed → kitty → Terminal).
 
 ## Architecture (Sources/Shoji)
 
