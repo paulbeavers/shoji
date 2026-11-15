@@ -65,7 +65,7 @@ struct SettingsFile: Codable {
     var gapsIn: Double?
     var gapsOut: Double?
     var borderSize: Double?
-    var rounding: Double?
+    var rounding: Double?            // no longer a setting (ignored; older files may have it)
     var activeBorderStart: String?
     var activeBorderEnd: String?
     var inactiveBorder: String?
@@ -112,8 +112,9 @@ final class Config {
     // general (hyprland.conf: gaps_in 5, gaps_out 10, border_size 2 — Lucent's values)
     var gapsIn: CGFloat = 5
     var gapsOut: CGFloat = 10
-    /// Corner radius of the bar's pills, the dock and the launcher.
-    var rounding: CGFloat = 12
+    /// Corner radius of Shoji's own panels (launcher, keybindings sheet). Not a setting: macOS
+    /// draws every app's window corners and Shoji can't change them, so a slider only misled.
+    let rounding: CGFloat = 12
     /// The theme's highlight gradient (mauve → blue), used for the active workspace pill.
     var activeBorder: [NSColor] = [NSColor(hex: 0xCBA6F7), NSColor(hex: 0x89B4FA)]
     var inactiveBorder = NSColor(hex: 0x313244)
@@ -214,7 +215,7 @@ final class Config {
 
     func snapshot() -> SettingsFile {
         SettingsFile(
-            theme: themeID, gapsIn: gapsIn, gapsOut: gapsOut, borderSize: nil, rounding: rounding,
+            theme: themeID, gapsIn: gapsIn, gapsOut: gapsOut, borderSize: nil, rounding: nil,
             activeBorderStart: activeBorder.first?.hexString, activeBorderEnd: activeBorder.last?.hexString,
             inactiveBorder: inactiveBorder.hexString, focusFollowsMouse: focusFollowsMouse,
             focusOnActivate: focusOnActivate, modifierKey: modifierKey.rawValue,
@@ -232,7 +233,6 @@ final class Config {
         if let id = f.theme, let t = ThemeLibrary.theme(id) { applyTheme(t, fully: false) }
         if let v = f.gapsIn { gapsIn = CGFloat(v) }
         if let v = f.gapsOut { gapsOut = CGFloat(v) }
-        if let v = f.rounding { rounding = CGFloat(v) }
         if let a = f.activeBorderStart.flatMap(NSColor.init(hexString:)),
            let b = f.activeBorderEnd.flatMap(NSColor.init(hexString:)) { activeBorder = [a, b] }
         if let v = f.inactiveBorder.flatMap(NSColor.init(hexString:)) { inactiveBorder = v }

@@ -230,6 +230,10 @@ that). Shoji can't change another app's corner radius, only keep the text clear 
 `ThemeSync.refreshKittySettings()` updates an existing kitty shoji.conf (so new keys arrive without
 touching Settings); it never creates one, and it only rewrites/reloads kitty when the text changed.
 
+There is **no corner-rounding setting** (removed 2026-11-15): it only ever rounded Shoji's launcher
+and keybindings sheet, but users expected their windows' corners to change, which macOS doesn't
+allow (yabai needs SIP off for it). `Config.rounding` is a constant; old `rounding` keys are ignored.
+
 ## Companion apps: `../shoji-machines` (Mod+M) and `../shoji-containers` (Mod+O)
 
 Both are separate repos and regular apps, found by bundle id (`dev.shoji.Machines`,

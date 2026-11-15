@@ -90,10 +90,9 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
         header("Theme", "The same themes as Lucent for Hyprland")
         add(ThemeGridView())
 
-        header("General", "Gaps, corners and focus")
+        header("General", "Gaps, keys and focus")
         slider("Inner gaps", 0...30, step: 1, fmt: "%.0f px", get: { Double(c.gapsIn) }, set: { c.gapsIn = CGFloat($0) })
         slider("Outer gaps", 0...60, step: 1, fmt: "%.0f px", get: { Double(c.gapsOut) }, set: { c.gapsOut = CGFloat($0) })
-        slider("Corner rounding", 0...30, step: 1, fmt: "%.0f px", get: { Double(c.rounding) }, set: { c.rounding = CGFloat($0) })
         popup("Modifier key", options: ModifierKey.allCases.map(\.title),
               get: { c.modifierKey.title },
               set: { t in c.modifierKey = ModifierKey.allCases.first { $0.title == t } ?? .option })
