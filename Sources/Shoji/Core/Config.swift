@@ -87,6 +87,8 @@ struct SettingsFile: Codable {
     var themeSetsWallpaper: Bool?
     var themeSetsKitty: Bool?
     var themeSetsAccent: Bool?
+    var kittyOpacity: Double?
+    var kittyHideTitlebar: Bool?
 }
 
 /// Runtime configuration, modelled on hyprland.conf's `general` and `decoration` sections.
@@ -119,6 +121,10 @@ final class Config {
     var themeSetsAppearance = true
     var themeSetsWallpaper = true
     var themeSetsKitty = true
+    /// kitty's background_opacity (Settings → Terminal). Shoji assumes kitty is the terminal.
+    var kittyOpacity: Double = 0.9
+    /// kitty's hide_window_decorations titlebar-only (no title bar or traffic-light buttons).
+    var kittyHideTitlebar = false
     var themeSetsAccent = true
     var modifierKey: ModifierKey = .option
     var modSymbol: String { modifierKey.symbol }
@@ -205,7 +211,8 @@ final class Config {
             terminalApp: terminalApp, browserApp: browserApp, editorApp: editorApp,
             floatApps: floatApps.sorted(), blur: nil,
             themeSetsAppearance: themeSetsAppearance, themeSetsWallpaper: themeSetsWallpaper,
-            themeSetsKitty: themeSetsKitty, themeSetsAccent: themeSetsAccent)
+            themeSetsKitty: themeSetsKitty, themeSetsAccent: themeSetsAccent,
+            kittyOpacity: kittyOpacity, kittyHideTitlebar: kittyHideTitlebar)
     }
 
     func apply(_ f: SettingsFile) {
@@ -227,6 +234,8 @@ final class Config {
         if let v = f.themeSetsAppearance { themeSetsAppearance = v }
         if let v = f.themeSetsWallpaper { themeSetsWallpaper = v }
         if let v = f.themeSetsKitty { themeSetsKitty = v }
+        if let v = f.kittyHideTitlebar { kittyHideTitlebar = v }
+        if let v = f.kittyOpacity { kittyOpacity = min(1, max(0.3, v)) }
         if let v = f.themeSetsAccent { themeSetsAccent = v }
     }
 

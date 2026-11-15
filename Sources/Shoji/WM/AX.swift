@@ -115,11 +115,12 @@ enum AX {
         AXUIElementPerformAction(e, kAXRaiseAction as CFString)
     }
 
-    /// Press the window's close button (what clicking the red button does).
-    static func close(_ e: AXUIElement) {
-        if let button = element(e, kAXCloseButtonAttribute) {
-            AXUIElementPerformAction(button, kAXPressAction as CFString)
-        }
+    /// Press the window's close button (what clicking the red button does). False when it has
+    /// none (e.g. kitty with its title bar hidden).
+    @discardableResult
+    static func close(_ e: AXUIElement) -> Bool {
+        guard let button = element(e, kAXCloseButtonAttribute) else { return false }
+        return AXUIElementPerformAction(button, kAXPressAction as CFString) == .success
     }
 
     // MARK: Coordinates

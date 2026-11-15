@@ -1,5 +1,6 @@
 import AppKit
 import ApplicationServices
+import Carbon.HIToolbox
 
 /// Accessibility notifications arrive here (a plain C callback) and go to the window manager.
 private func axCallback(_ observer: AXObserver, _ element: AXUIElement, _ name: CFString,
@@ -843,7 +844,10 @@ final class WindowManager {
 
     func closeFocused() {
         guard let w = focused else { return }
-        AX.close(w.element)
+        if AX.close(w.element) { return }
+        // No close button (title bar hidden): make sure it's the app's front window, then ⌘W.
+        focus(w)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) { Programs.postCommandKey(kVK_ANSI_W, to: w.pid) }
     }
 
     func focusPreviousWindow() {

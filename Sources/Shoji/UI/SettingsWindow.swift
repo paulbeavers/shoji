@@ -70,6 +70,12 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
         header("Workspaces", "Floating workspaces let windows overlap and be moved freely")
         workspaceModes()
 
+        header("Terminal", "kitty — what Mod+↩ opens")
+        slider("Window opacity", 0.3...1, step: 0.01, fmt: "%.0f%%", scale: 100,
+               get: { self.c.kittyOpacity }, set: { self.c.kittyOpacity = $0; self.scheduleKittyWrite() })
+        toggle("Hide kitty's title bar", note: "No title bar or buttons (new kitty windows; Mod+Q still closes them)",
+               get: { self.c.kittyHideTitlebar }, set: { self.c.kittyHideTitlebar = $0; self.scheduleKittyWrite() })
+
         header("Theme also changes", "Applied whenever you pick a theme")
         toggle("macOS appearance", note: "Dark or Light, to match the theme (macOS asks once to allow it)",
                get: { self.c.themeSetsAppearance }, set: { self.c.themeSetsAppearance = $0 })
@@ -95,6 +101,15 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
              set: { self.c.floatApps = Set($0.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }) })
 
         footer()
+    }
+
+    /// Write kitty's opacity a moment after the slider stops moving (each write reloads kitty).
+    private var kittyWrite: DispatchWorkItem?
+    private func scheduleKittyWrite() {
+        kittyWrite?.cancel()
+        let work = DispatchWorkItem { ThemeSync.writeKittySettings() }
+        kittyWrite = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25, execute: work)
     }
 
     /// A popup of installed apps from `candidates` ("Automatic" = empty).

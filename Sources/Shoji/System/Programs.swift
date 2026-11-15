@@ -6,7 +6,9 @@ import Carbon.HIToolbox
 enum Programs {
     enum Role { case terminal, browser, editor, files }
 
-    /// Candidates in order of preference when Settings says "Automatic".
+    static let kitty = "net.kovidgoyal.kitty"
+
+    /// Candidates offered in Settings (kitty is the default).
     static let terminals = ["com.mitchellh.ghostty", "net.kovidgoyal.kitty", "com.github.wez.wezterm", "org.alacritty",
                             "com.googlecode.iterm2", "dev.warp.Warp-Stable", "com.apple.Terminal"]
     static let editors = ["dev.zed.Zed", "com.microsoft.VSCode", "com.todesktop.230313mzl4w4u92", "com.sublimetext.4",
@@ -15,7 +17,7 @@ enum Programs {
     static func bundleID(for role: Role) -> String? {
         let c = Config.shared
         switch role {
-        case .terminal: return c.terminalApp.isEmpty ? terminals.first(where: isInstalled) : c.terminalApp
+        case .terminal: return c.terminalApp.isEmpty ? kitty : c.terminalApp // kitty is assumed installed
         case .editor: return c.editorApp.isEmpty ? editors.first(where: isInstalled) : c.editorApp
         case .files: return "com.apple.finder"
         case .browser:
@@ -60,10 +62,13 @@ enum Programs {
         NSWorkspace.shared.openApplication(at: url, configuration: config)
     }
 
-    private static func postCommandN(to pid: pid_t) {
+    private static func postCommandN(to pid: pid_t) { postCommandKey(kVK_ANSI_N, to: pid) }
+
+    /// ⌘ + key, sent straight to one app.
+    static func postCommandKey(_ key: Int, to pid: pid_t) {
         let src = CGEventSource(stateID: .hidSystemState)
         for down in [true, false] {
-            let e = CGEvent(keyboardEventSource: src, virtualKey: CGKeyCode(kVK_ANSI_N), keyDown: down)
+            let e = CGEvent(keyboardEventSource: src, virtualKey: CGKeyCode(key), keyDown: down)
             e?.flags = .maskCommand
             e?.postToPid(pid)
         }

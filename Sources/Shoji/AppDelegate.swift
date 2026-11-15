@@ -20,6 +20,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Debug: write kitty's theme.conf for a theme (use CFFIXED_USER_HOME to aim it elsewhere).
         if let i = args.firstIndex(of: "--write-kitty"), i + 1 < args.count, let t = ThemeLibrary.theme(args[i + 1]) {
             ThemeSync.writeKitty(t)
+            ThemeSync.writeKittySettings()
             NSApp.terminate(nil)
             return
         }
