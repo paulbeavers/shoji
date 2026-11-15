@@ -114,7 +114,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 guard let self else { return }
                 if Config.shared.modifierKey != self.lastModifier {
                     self.lastModifier = Config.shared.modifierKey
-                    Hotkeys.shared.register(Bindings.all())
+                    // shoji.conf's `$mod` binds were parsed with the old modifier: parse again
+                    // (its userConfigDidChange re-registers every hotkey).
+                    UserConfig.shared.load()
                 }
                 self.workspaceMenu?.refresh()
             }

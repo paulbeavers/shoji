@@ -3,7 +3,9 @@ import AppKit
 /// A panel that can take the keyboard (the launcher's search field). Shoji is an accessory app,
 /// so showing one activates Shoji until it closes.
 class KeyPanel: NSPanel {
-    var onCancel: (() -> Void)?
+    /// Closing: `refocus` = give the keyboard back to the managed window (Esc, toggling it off);
+    /// false when the user clicked elsewhere — that click already chose what gets focus.
+    var onClose: ((_ refocus: Bool) -> Void)?
     init(size: CGSize) {
         super.init(contentRect: CGRect(origin: .zero, size: size), styleMask: [.borderless, .nonactivatingPanel],
                    backing: .buffered, defer: false)
@@ -16,10 +18,10 @@ class KeyPanel: NSPanel {
         hidesOnDeactivate = true
     }
     override var canBecomeKey: Bool { true }
-    override func cancelOperation(_ sender: Any?) { onCancel?() }
+    override func cancelOperation(_ sender: Any?) { onClose?(true) }
     override func resignKey() {
         super.resignKey()
-        onCancel?() // clicking elsewhere closes it, like wofi
+        onClose?(false) // clicking elsewhere closes it, like wofi
     }
 }
 
@@ -53,7 +55,7 @@ final class Launcher: NSObject, NSTextFieldDelegate {
         field.placeholderString = "Run an app…"
         field.delegate = self
         box.addSubview(field)
-        panel.onCancel = { [weak self] in self?.hide() }
+        panel.onClose = { [weak self] refocus in self?.hide(refocus: refocus) }
     }
 
     var isShown: Bool { panel.isVisible }
@@ -73,9 +75,11 @@ final class Launcher: NSObject, NSTextFieldDelegate {
         panel.makeFirstResponder(field)
     }
 
-    func hide() {
+    /// `refocus: false` when something else takes focus anyway (an app just launched, a click).
+    func hide(refocus: Bool = true) {
         guard panel.isVisible else { return }
         panel.orderOut(nil)
+        if refocus { WindowManager.shared?.refocusAfterPanel() }
     }
 
     /// Apps in the standard folders (one level deep, plus Utilities).
@@ -147,7 +151,7 @@ final class Launcher: NSObject, NSTextFieldDelegate {
 
     private func launch(_ i: Int) {
         guard i < matches.count else { return }
-        hide()
+        hide(refocus: false)
         Programs.launch(url: matches[i].url)
     }
 
@@ -213,7 +217,7 @@ enum HelpPanel {
     private static var panel: KeyPanel?
 
     static func toggle() {
-        if let p = panel, p.isVisible { p.orderOut(nil); return }
+        if let p = panel, p.isVisible { close(p, refocus: true); return }
         let c = Config.shared
         let bindings = Bindings.all()
         let groups = ["Apps", "Windows", "Focus & move", "Workspaces"]
@@ -232,7 +236,7 @@ enum HelpPanel {
         let h = max(colHeights.prefix(2).reduce(0, +), colHeights.dropFirst(2).reduce(0, +)) + 60
         let w = colW * 2 + 60
         let p = KeyPanel(size: CGSize(width: w, height: h))
-        p.onCancel = { [weak p] in p?.orderOut(nil) }
+        p.onClose = { [weak p] refocus in if let p { close(p, refocus: refocus) } }
         let root = FlippedView(frame: CGRect(x: 0, y: 0, width: w, height: h))
         root.wantsLayer = true
         root.layer?.backgroundColor = c.base.withAlphaComponent(0.97).cgColor
@@ -271,6 +275,12 @@ enum HelpPanel {
         panel = p
         NSApp.activate(ignoringOtherApps: true)
         p.makeKeyAndOrderFront(nil)
+    }
+
+    private static func close(_ p: KeyPanel, refocus: Bool) {
+        guard p.isVisible else { return }
+        p.orderOut(nil)
+        if refocus { WindowManager.shared?.refocusAfterPanel() }
     }
 }
 

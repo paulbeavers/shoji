@@ -232,7 +232,7 @@ final class StatsWindow: NSObject, NSWindowDelegate {
         let width = max(300, min(980, root.bounds.width - 40))
         let x0 = (root.bounds.width - width) / 2
         // Below the title bar, or below where it would be when hidden.
-        var y: CGFloat = 22
+        var y: CGFloat = max(22, window.titlebarInset + 8)
         heading.sizeToFit()
         heading.frame.origin = CGPoint(x: x0, y: y)
         y += heading.frame.height + 2

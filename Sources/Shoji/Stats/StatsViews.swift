@@ -33,7 +33,9 @@ final class StatTile: NSView {
 
     func refreshColors() {
         let c = Config.shared
-        layer?.backgroundColor = c.base.withAlphaComponent(CGFloat(c.windowOpacity)).cgColor
+        // Clear with an outline: the window already paints the translucent background (a second
+        // translucent fill would double it and the tiles would look opaque).
+        layer?.backgroundColor = NSColor.clear.cgColor
         layer?.borderColor = c.surface0.cgColor
         label.textColor = c.subtext
         value.textColor = c.text

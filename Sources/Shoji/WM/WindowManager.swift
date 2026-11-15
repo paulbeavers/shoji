@@ -267,7 +267,9 @@ final class WindowManager {
         }
 
         let bundle = NSRunningApplication(processIdentifier: pid)?.bundleIdentifier ?? ""
-        var floating = !standard || !resizable || c.floatApps.contains(bundle) || current.isFloatingMode
+        // Floats by its nature (dialog, fixed size, always-float app) or by its workspace's layout.
+        let floatsByNature = !standard || !resizable || c.floatApps.contains(bundle)
+        var floating = floatsByNature || current.isFloatingMode
         var floatFrame = frame
         if let p = pendingFloat, p.bundleID == bundle, p.until > Date() {
             floating = true
@@ -281,7 +283,9 @@ final class WindowManager {
         // shoji.conf window rules (not for windows coming back from a restart).
         let title = AX.string(e, kAXTitleAttribute) ?? ""
         let rule = UserConfig.shared.rules(app: appName, bundle: bundle, title: title)
-        if restoring?.placement(of: id) == nil {
+        if restoring?.placement(of: id, pid: pid) == nil {
+            // A `workspace N` rule: the layout of workspace N decides, not the current one's.
+            if let n = rule.workspace, let target = workspace(index: n) { floating = floatsByNature || target.isFloatingMode }
             if rule.float { floating = true }
             if rule.tile { floating = false }
             if let size = rule.size {
@@ -293,7 +297,7 @@ final class WindowManager {
             }
         }
         // Restarting: put the window back where it was (workspace, floating frame, pin).
-        let saved = restoring?.placement(of: id)
+        let saved = restoring?.placement(of: id, pid: pid)
         if let saved {
             floating = saved.floating != nil
             if let f = saved.floating, f.frame.count == 4 {
@@ -320,7 +324,7 @@ final class WindowManager {
         // A `workspace N [silent]` rule.
         if saved == nil, let n = rule.workspace, let ws = workspaces.first(where: { $0.index == n }), ws !== current {
             place(w, in: ws)
-            park(w)
+            park(w, keepFloatFrame: true) // the frame a size/center rule chose, not its launch frame
             if isNew && !rule.silent { switchTo(n, focusing: w) }
             notifyChange()
             return
@@ -378,12 +382,18 @@ final class WindowManager {
         if on {
             guard !dormant.contains(w.id) else { return }
             dormant.insert(w.id)
-            if w.isFloating { w.floatFrame = w.frame ?? w.floatFrame }
+            // (A parked window's frame is the park point, not where it belongs.)
+            if w.isFloating, !w.isParked, let f = w.frame { w.floatFrame = f }
             containing(w)?.remove(w)
         } else {
             guard dormant.remove(w.id) != nil else { return }
+            // An app shown again (⌘H undone) with a window that's still minimized: it stays out.
+            if AX.bool(w.element, kAXMinimizedAttribute) == true { dormant.insert(w.id); return }
+            // Back on its own workspace — not wherever the user happens to be.
+            let home = w.isPinned ? current : (workspace(index: w.workspace) ?? current)
             w.isParked = false
-            place(w, in: current)
+            place(w, in: home)
+            if home !== current { park(w, keepFloatFrame: true) }
         }
         relayout()
         notifyChange()
@@ -498,7 +508,7 @@ final class WindowManager {
         if let e = w.expectedFrame, abs(e.minX - f.minX) < 2, abs(e.minY - f.minY) < 2,
            abs(e.width - f.width) < 2, abs(e.height - f.height) < 2 { return } // our own move
         if w.isFloating {
-            w.floatFrame = f
+            if containing(w)?.fullscreen !== w { w.floatFrame = f } // fullscreen keeps the frame to return to
             return
         }
         // Only a mouse drag is the user moving or resizing a tile. Anything else is the app
@@ -536,11 +546,7 @@ final class WindowManager {
               let f = w.frame, let old = ws.tree.rect(for: w) else { return }
         if AX.bool(w.element, "AXFullScreen") == true { return }
         if abs(f.width - old.width) < 4 && abs(f.height - old.height) < 4 {
-            // Moved: dropped onto another tile swaps with it; anywhere else snaps back.
-            let center = CGPoint(x: f.midX, y: f.midY)
-            if let target = ws.tree.windows.first(where: { $0 !== w && (ws.tree.rect(for: $0)?.contains(center) ?? false) }) {
-                ws.tree.swap(w, target)
-            }
+            dropTile(w, at: AX.axPoint(fromScreen: NSEvent.mouseLocation), in: ws)
         } else {
             ws.tree.adopt(w, resizedTo: f, gap: c.gapsIn * 2)
         }
@@ -667,9 +673,11 @@ final class WindowManager {
         w.snappedFrame = fixed
     }
 
-    private func park(_ w: ManagedWindow) {
+    /// `keepFloatFrame`: the window's floating frame was just chosen (a rule, a restore) — don't
+    /// replace it with where the window happens to be.
+    private func park(_ w: ManagedWindow, keepFloatFrame: Bool = false) {
         guard !w.isParked else { return }
-        if w.isFloating, let f = w.frame { w.floatFrame = f }
+        if w.isFloating, !keepFloatFrame, let f = w.frame { w.floatFrame = f }
         w.isParked = true
         AX.setPosition(w.element, parkPoint)
     }
@@ -748,7 +756,9 @@ final class WindowManager {
 
     func saveSession() {
         guard restoring == nil else { return }
-        SessionFile(current: current.index, focused: focusedID, workspaces: workspaces.map { ws in
+        SessionFile(current: current.index, focused: focusedID,
+                    pids: Dictionary(windows.values.map { (String($0.id), $0.pid) }, uniquingKeysWith: { a, _ in a }),
+                    workspaces: workspaces.map { ws in
             SessionFile.Space(index: ws.index, tree: SessionFile.Node(ws.tree.root), floating: ws.floating.map { w in
                 let f = (w.isParked ? w.floatFrame : (w.frame ?? w.floatFrame)) ?? .zero
                 return SessionFile.Floating(id: w.id, frame: [f.minX, f.minY, f.width, f.height], pinned: w.isPinned)
@@ -889,11 +899,19 @@ final class WindowManager {
         AX.raise(w.element)
     }
 
-    func mouseDropTiled(_ w: ManagedWindow, at p: CGPoint) {
-        guard let ws = containing(w) else { return }
+    /// A tiled window dropped at a point (title-bar drag or Mod+drag): swap with the tile under the
+    /// pointer; anywhere else it snaps back on the next layout.
+    private func dropTile(_ w: ManagedWindow, at p: CGPoint, in ws: Workspace) {
         if let target = ws.tree.windows.first(where: { $0 !== w && (ws.tree.rect(for: $0)?.contains(p) ?? false) }) {
             ws.tree.swap(w, target)
         }
+    }
+
+    func isFullscreen(_ w: ManagedWindow) -> Bool { containing(w)?.fullscreen === w }
+
+    func mouseDropTiled(_ w: ManagedWindow, at p: CGPoint) {
+        guard let ws = containing(w) else { return }
+        dropTile(w, at: p, in: ws)
         relayout(force: true)
         notifyChange()
     }
@@ -1049,6 +1067,13 @@ final class WindowManager {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) { Programs.postCommandKey(kVK_ANSI_W, to: w.pid) }
     }
 
+    /// A Shoji panel (launcher, help) was dismissed: Shoji was active while it showed, so give the
+    /// keyboard back to the window that had it.
+    func refocusAfterPanel() {
+        guard let w = focused ?? current.focused, current.contains(w) || w.isPinned else { return }
+        focus(w)
+    }
+
     func focusPreviousWindow() {
         guard let id = previousFocusedID, let w = windows[id] else { return }
         focus(w)
@@ -1081,7 +1106,12 @@ final class WindowManager {
         for ws in workspaces {
             if ws.isFloatingMode {
                 for w in ws.tree.windows {
-                    w.floatFrame = ws.tree.rect(for: w) ?? w.frame
+                    // Its tile, else where it is on screen — but a parked (hidden-workspace) window's
+                    // frame is the park point: give it a centred frame instead.
+                    let a = area
+                    let fallback = CGRect(x: a.midX - a.width * 0.3, y: a.midY - a.height * 0.3,
+                                          width: a.width * 0.6, height: a.height * 0.6)
+                    w.floatFrame = ws.tree.rect(for: w) ?? (w.isParked ? nil : w.frame) ?? fallback
                     ws.tree.remove(w)
                     w.isFloating = true
                     ws.floating.append(w)

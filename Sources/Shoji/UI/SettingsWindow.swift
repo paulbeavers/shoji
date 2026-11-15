@@ -85,25 +85,29 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
     // MARK: Building the form
 
     private func build() {
+        // The controls' closures capture the Config singleton, not `self` (they're stored in `self`).
+        let c = Config.shared
         header("Theme", "The same themes as Lucent for Hyprland")
         add(ThemeGridView())
 
         header("General", "Gaps, corners and focus")
-        slider("Inner gaps", 0...30, step: 1, fmt: "%.0f px", get: { Double(self.c.gapsIn) }, set: { self.c.gapsIn = CGFloat($0) })
-        slider("Outer gaps", 0...60, step: 1, fmt: "%.0f px", get: { Double(self.c.gapsOut) }, set: { self.c.gapsOut = CGFloat($0) })
-        slider("Corner rounding", 0...30, step: 1, fmt: "%.0f px", get: { Double(self.c.rounding) }, set: { self.c.rounding = CGFloat($0) })
+        slider("Inner gaps", 0...30, step: 1, fmt: "%.0f px", get: { Double(c.gapsIn) }, set: { c.gapsIn = CGFloat($0) })
+        slider("Outer gaps", 0...60, step: 1, fmt: "%.0f px", get: { Double(c.gapsOut) }, set: { c.gapsOut = CGFloat($0) })
+        slider("Corner rounding", 0...30, step: 1, fmt: "%.0f px", get: { Double(c.rounding) }, set: { c.rounding = CGFloat($0) })
         popup("Modifier key", options: ModifierKey.allCases.map(\.title),
-              get: { self.c.modifierKey.title },
-              set: { t in self.c.modifierKey = ModifierKey.allCases.first { $0.title == t } ?? .option })
-        toggle("Focus follows mouse", get: { self.c.focusFollowsMouse }, set: { self.c.focusFollowsMouse = $0 })
+              get: { c.modifierKey.title },
+              set: { t in c.modifierKey = ModifierKey.allCases.first { $0.title == t } ?? .option })
+        toggle("Focus follows mouse", get: { c.focusFollowsMouse }, set: { c.focusFollowsMouse = $0 })
         toggle("Follow apps to their workspace", note: "Activating a window elsewhere (Dock, ⌘Tab) switches to its workspace",
-               get: { self.c.focusOnActivate }, set: { self.c.focusOnActivate = $0 })
+               get: { c.focusOnActivate }, set: { c.focusOnActivate = $0 })
+        toggle("Mouse binds", note: c.shortcut("⌥ + drag moves a window, ⌥ + right-drag resizes it"),
+               get: { c.mouseBinds }, set: { c.mouseBinds = $0 })
 
         header("Windows", "Applied to kitty, Shoji Machines, Shoji Containers and Stats")
         slider("Window opacity", 0.3...1, step: 0.01, fmt: "%.0f%%", scale: 100,
-               get: { self.c.windowOpacity }, set: { self.c.windowOpacity = $0; self.scheduleWindowSettingsWrite() })
+               get: { c.windowOpacity }, set: { [weak self] in c.windowOpacity = $0; self?.scheduleWindowSettingsWrite() })
         toggle("Hide title bars", note: "No title bar or buttons (kitty: new windows). Mod+Q still closes them",
-               get: { self.c.hideTitleBars }, set: { self.c.hideTitleBars = $0; self.scheduleWindowSettingsWrite() })
+               get: { c.hideTitleBars }, set: { [weak self] in c.hideTitleBars = $0; self?.scheduleWindowSettingsWrite() })
 
         header("Config file", "Keybindings, window rules and startup programs, hyprland.conf-style")
         let editButton = NSButton(title: "Edit shoji.conf", target: nil, action: nil)
@@ -117,27 +121,27 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
 
         header("Theme also changes", "Applied whenever you pick a theme")
         toggle("macOS appearance", note: "Dark or Light, to match the theme (macOS asks once to allow it)",
-               get: { self.c.themeSetsAppearance }, set: { self.c.themeSetsAppearance = $0 })
+               get: { c.themeSetsAppearance }, set: { c.themeSetsAppearance = $0 })
         toggle("Wallpaper", note: "Lucent's starch lattice, dark or light",
-               get: { self.c.themeSetsWallpaper }, set: { self.c.themeSetsWallpaper = $0 })
+               get: { c.themeSetsWallpaper }, set: { c.themeSetsWallpaper = $0 })
         toggle("kitty colours", note: "Writes ~/.config/kitty/theme.conf and reloads kitty (old file kept as theme.conf.before-shoji)",
-               get: { self.c.themeSetsKitty }, set: { self.c.themeSetsKitty = $0 })
+               get: { c.themeSetsKitty }, set: { c.themeSetsKitty = $0 })
         toggle("macOS accent colour", note: "The nearest of macOS's eight accent colours",
-               get: { self.c.themeSetsAccent }, set: { self.c.themeSetsAccent = $0 })
+               get: { c.themeSetsAccent }, set: { c.themeSetsAccent = $0 })
         let applyButton = NSButton(title: "Apply now", target: nil, action: nil)
         applyButton.bezelStyle = .rounded
         bind(applyButton) { if let t = ThemeLibrary.theme(Config.shared.themeID) { ThemeSync.apply(t) } }
         row("Apply the current theme", note: "Re-applies the four above", control: applyButton, controlWidth: 100)
 
         header("Programs", c.shortcut("What ⌥↩, ⌥B and ⌥N open"))
-        appPopup("Terminal", candidates: Programs.terminals, get: { self.c.terminalApp }, set: { self.c.terminalApp = $0 })
+        appPopup("Terminal", candidates: Programs.terminals, get: { c.terminalApp }, set: { c.terminalApp = $0 })
         appPopup("Browser", candidates: ["com.apple.Safari", "com.google.Chrome", "org.mozilla.firefox", "company.thebrowser.Browser",
                                           "com.brave.Browser", "com.microsoft.edgemac", "app.zen-browser.zen"],
-                 get: { self.c.browserApp }, set: { self.c.browserApp = $0 })
-        appPopup("Editor", candidates: Programs.editors, get: { self.c.editorApp }, set: { self.c.editorApp = $0 })
+                 get: { c.browserApp }, set: { c.browserApp = $0 })
+        appPopup("Editor", candidates: Programs.editors, get: { c.editorApp }, set: { c.editorApp = $0 })
         text("Always float", note: "Bundle ids, comma-separated",
-             get: { self.c.floatApps.sorted().joined(separator: ", ") },
-             set: { self.c.floatApps = Set($0.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }) })
+             get: { c.floatApps.sorted().joined(separator: ", ") },
+             set: { c.floatApps = Set($0.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }) })
 
         footer()
     }
@@ -361,10 +365,11 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
     private func layout() {
         scroll.frame = view.bounds
         doneButton.sizeToFit()
-        doneButton.frame.origin = CGPoint(x: view.bounds.width - doneButton.frame.width - 16, y: 12)
+        let inset = window.titlebarInset
+        doneButton.frame.origin = CGPoint(x: view.bounds.width - doneButton.frame.width - 16, y: inset + 12)
         let width = max(320, min(columnWidth, view.bounds.width - 48))
         let x = (view.bounds.width - width) / 2
-        var y: CGFloat = 8
+        var y: CGFloat = inset + 8
         for v in items {
             let h = (v as? ThemeGridView)?.height(for: width) ?? v.frame.height
             v.frame = CGRect(x: x, y: y, width: width, height: h)

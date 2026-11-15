@@ -1,4 +1,5 @@
 import AppKit
+import Security
 import Carbon.HIToolbox
 
 extension Notification.Name {
@@ -42,7 +43,7 @@ final class UserConfig {
     private(set) var errors: [String] = []
     private var exec: [String] = []
     private var execOnce: [String] = []
-    private var watcher: DispatchSourceFileSystemObject?
+    private var watchers: [DispatchSourceFileSystemObject] = []
     private var lastModified: Date?
     private var reloadWork: DispatchWorkItem?
 
@@ -65,7 +66,7 @@ final class UserConfig {
 
     func load() {
         let text = (try? String(contentsOf: Self.url, encoding: .utf8)) ?? ""
-        lastModified = (try? FileManager.default.attributesOfItem(atPath: Self.url.path))?[.modificationDate] as? Date
+        lastModified = (try? FileManager.default.attributesOfItem(atPath: Self.url.resolvingSymlinksInPath().path))?[.modificationDate] as? Date
         parse(text)
         if !errors.isEmpty {
             errors.forEach { ShojiLog.write("shoji.conf: \($0)") }
@@ -104,9 +105,10 @@ final class UserConfig {
             line = line.replacingOccurrences(of: "\u{0}", with: "#").trimmingCharacters(in: .whitespaces)
             guard !line.isEmpty else { continue }
             guard let eq = line.firstIndex(of: "=") else { errors.append("line \(lineNo): expected key = value"); continue }
-            let key = line[..<eq].trimmingCharacters(in: .whitespaces).lowercased()
+            let rawKey = line[..<eq].trimmingCharacters(in: .whitespaces)
             var value = line[line.index(after: eq)...].trimmingCharacters(in: .whitespaces)
-            if key.hasPrefix("$") { vars[key] = value; continue }
+            if rawKey.hasPrefix("$") { vars[rawKey] = value; continue } // $names are case-sensitive, like Hyprland's
+            let key = rawKey.lowercased()
             for (name, v) in vars.sorted(by: { $0.key.count > $1.key.count }) { value = value.replacingOccurrences(of: name, with: v) }
             switch key {
             case "bind":
@@ -229,12 +231,15 @@ final class UserConfig {
     /// `exec-once`: once per login session — not again on Shoji restarts or config reloads.
     private func runExecOnce() {
         guard !execOnce.isEmpty else { return }
+        // A login = this boot + this security (audit) session: logging out and back in starts a
+        // new session, a Shoji restart doesn't. The marker lives in the per-user temp folder.
         var boot = timeval()
         var size = MemoryLayout<timeval>.size
         sysctlbyname("kern.boottime", &boot, &size, nil, 0)
-        let dir = "/tmp/shoji-\(getuid())"
-        mkdir(dir, 0o700)
-        let marker = "\(dir)/exec-once-\(boot.tv_sec)"
+        var session = SecuritySessionId()
+        var attrs = SessionAttributeBits()
+        SessionGetInfo(callerSecuritySession, &session, &attrs)
+        let marker = (NSTemporaryDirectory() as NSString).appendingPathComponent("shoji-exec-once-\(boot.tv_sec)-\(session)")
         guard !FileManager.default.fileExists(atPath: marker) else { return }
         FileManager.default.createFile(atPath: marker, contents: nil)
         execOnce.forEach(Self.run)
@@ -257,25 +262,34 @@ final class UserConfig {
 
     // MARK: Watching
 
-    /// Reload when the file is saved (editors usually replace the file, so watch its folder).
+    /// Reload when the file is saved. Editors usually replace the file, so watch its folder — and,
+    /// when shoji.conf is a symlink (a dotfiles repo), the folder of the file it points to.
     private func watch() {
-        let fd = open(Config.directory.path, O_EVTONLY)
-        guard fd >= 0 else { return }
-        let src = DispatchSource.makeFileSystemObjectSource(fileDescriptor: fd, eventMask: [.write, .rename, .delete], queue: .main)
-        src.setEventHandler { [weak self] in MainActor.assumeIsolated { self?.fileMayHaveChanged() } }
-        src.setCancelHandler { close(fd) }
-        src.resume()
-        watcher = src
+        watchers.forEach { $0.cancel() }
+        watchers = []
+        var dirs = [Config.directory.path]
+        let target = Self.url.resolvingSymlinksInPath().deletingLastPathComponent().path
+        if target != Config.directory.resolvingSymlinksInPath().path { dirs.append(target) }
+        for dir in dirs {
+            let fd = open(dir, O_EVTONLY)
+            guard fd >= 0 else { continue }
+            let src = DispatchSource.makeFileSystemObjectSource(fileDescriptor: fd, eventMask: [.write, .rename, .delete], queue: .main)
+            src.setEventHandler { [weak self] in MainActor.assumeIsolated { self?.fileMayHaveChanged() } }
+            src.setCancelHandler { close(fd) }
+            src.resume()
+            watchers.append(src)
+        }
     }
 
     private func fileMayHaveChanged() {
         reloadWork?.cancel()
         let work = DispatchWorkItem { [weak self] in
             guard let self else { return }
-            let m = (try? FileManager.default.attributesOfItem(atPath: Self.url.path))?[.modificationDate] as? Date
+            let m = (try? FileManager.default.attributesOfItem(atPath: Self.url.resolvingSymlinksInPath().path))?[.modificationDate] as? Date
             guard m != self.lastModified else { return }
             ShojiLog.write("shoji.conf changed: reloading")
             self.load()
+            self.watch() // the symlink may now point somewhere else
             self.exec.forEach(Self.run)
         }
         reloadWork = work

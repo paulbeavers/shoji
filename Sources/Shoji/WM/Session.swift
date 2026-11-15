@@ -28,6 +28,9 @@ struct SessionFile: Codable {
     }
     var current: Int
     var focused: UInt32?
+    /// Window id → the pid that owned it. Window ids are reused after a reboot or an app restart;
+    /// a window only matches if the same process still owns it.
+    var pids: [String: Int32]?
     var workspaces: [Space]
 
     static var url: URL { Config.directory.appendingPathComponent("session.json") }
@@ -43,8 +46,10 @@ struct SessionFile: Codable {
         try? data.write(to: Self.url, options: .atomic)
     }
 
-    /// Where a window was: its workspace and whether it floated (with its frame and pin).
-    func placement(of id: UInt32) -> (workspace: Int, floating: Floating?)? {
+    /// Where a window was: its workspace and whether it floated (with its frame and pin) — if it's
+    /// the same window (same owning process) as when the session was saved.
+    func placement(of id: UInt32, pid: Int32) -> (workspace: Int, floating: Floating?)? {
+        guard pids?[String(id)] == pid else { return nil }
         for ws in workspaces {
             if let f = ws.floating.first(where: { $0.id == id }) { return (ws.index, f) }
             if ws.tree?.contains(id) == true { return (ws.index, nil) }

@@ -91,6 +91,7 @@ struct SettingsFile: Codable {
     var kittyHideTitlebar: Bool?     // old name of hideTitleBars (still read)
     var windowOpacity: Double?
     var hideTitleBars: Bool?
+    var mouseBinds: Bool?
 }
 
 /// Runtime configuration, modelled on hyprland.conf's `general` and `decoration` sections.
@@ -118,6 +119,8 @@ final class Config {
     var focusFollowsMouse = false
     /// When an app activates a window on another workspace (dock click, ⌘Tab), go there.
     var focusOnActivate = true
+    /// Mod + left-drag moves, Mod + right-drag resizes (see MouseBinds).
+    var mouseBinds = true
 
     // What picking a theme also changes (see ThemeSync).
     var themeSetsAppearance = true
@@ -216,7 +219,8 @@ final class Config {
             floatApps: floatApps.sorted(), blur: nil,
             themeSetsAppearance: themeSetsAppearance, themeSetsWallpaper: themeSetsWallpaper,
             themeSetsKitty: themeSetsKitty, themeSetsAccent: themeSetsAccent,
-            kittyOpacity: nil, kittyHideTitlebar: nil, windowOpacity: windowOpacity, hideTitleBars: hideTitleBars)
+            kittyOpacity: nil, kittyHideTitlebar: nil, windowOpacity: windowOpacity, hideTitleBars: hideTitleBars,
+            mouseBinds: mouseBinds)
     }
 
     func apply(_ f: SettingsFile) {
@@ -229,6 +233,7 @@ final class Config {
         if let v = f.inactiveBorder.flatMap(NSColor.init(hexString:)) { inactiveBorder = v }
         if let v = f.focusFollowsMouse { focusFollowsMouse = v }
         if let v = f.focusOnActivate { focusOnActivate = v }
+        if let v = f.mouseBinds { mouseBinds = v }
         if let v = f.modifierKey.flatMap(ModifierKey.init(rawValue:)) { modifierKey = v }
         if let v = f.floatingWorkspaces { floatingWorkspaces = Set(v) }
         if let v = f.terminalApp { terminalApp = v }
