@@ -36,6 +36,7 @@ build/Shoji.app/Contents/MacOS/Shoji --preview out.png   # offscreen render of t
 | `System/SystemChrome.swift` | Only puts back menu bar / Dock auto-hide settings that early versions changed (backup file) |
 | `System/ThemeSync.swift` | Picking a theme also sets macOS Dark/Light, the starch-lattice wallpaper, kitty's `theme.conf` (+ SIGUSR1 reload) and the nearest macOS accent colour |
 | `System/Programs.swift` | Terminal/browser/editor/files; "new window" = activate + ⌘N |
+| `Stats/` | Mod+I Stats window, **tiled** (from MacLucent's Stats tile): `StatsWindow` + `AppsSampler`, `StatsViews` (tiles, sparklines, tables), `SystemStats` (ProcStats/HostStats). `--preview-stats <png>` renders it offscreen |
 | `UI/WorkspaceMenu.swift` | Workspace pills: blank placeholder status item + `PillsPanel` overlay that draws them and takes clicks |
 | `UI/Launcher.swift` | App launcher (Mod+⇧D), keybindings sheet (Mod+/) |
 | `UI/SettingsWindow.swift`, `UI/ThemeGrid.swift` | Settings (from MacLucent's), theme cards |
@@ -123,10 +124,31 @@ workspace; tiled ones wait in `restoredTiled` until `finishRestore()` rebuilds e
 parks other workspaces' windows and returns to the saved workspace. Before this, every window
 landed on workspace 1 after a restart (user report).
 
+## Shoji's own windows
+
+Shoji never manages its own windows (the launcher and keybindings sheet float) — except Stats and
+Settings, which the user wanted tiled (2026-11-14): `WindowManager.tileOwnWindow(_:)` finds its
+AX element in Shoji's own process (an observer for `getpid()` with per-window notifications only)
+and adds it to `ownTiled`; `addWindow` rejects every other window of Shoji's pid.
+`releaseOwnWindow` on close. Mod+Q on an own window calls `performClose` (Shoji has no menu for
+⌘W). Mod+I: open → tile in the current workspace; open elsewhere → go to it; focused → close.
+Stats' **Shoji CPU/memory count the whole family**: Shoji, Shoji Machines, its VMs and Shoji
+Containers (table "Shoji apps"), and those are left out of "Managed apps". VMs run in
+Virtualization.framework XPC helpers (parent launchd); Shoji Machines' are picked out by their
+responsible pid (`ProcStats.virtualMachineProcesses`, private
+`responsibility_get_pid_responsible_for_pid` via dlsym) — Docker Desktop's VM uses the same helper
+and must not be counted.
+
 ## Windows settings (Settings → Windows)
 
+Shoji's own windows are `ShojiWindow`s: ⌘W and Esc close them (Shoji has no menu bar to carry
+⌘W). With title bars hidden there's no close button, so Settings has a Done button and Mod+,
+toggles it like Mod+I toggles Stats. `--preview-settings <png>` / `--preview-stats <png>` render
+them offscreen.
+
+
 `windowOpacity` (0.3–1) and `hideTitleBars` are window appearance Shoji applies wherever it can:
-kitty, through `~/.config/kitty/shoji.conf` (`background_opacity`, `hide_window_decorations
+Shoji's own Settings and Stats windows (`ShojiWindow.applyWindowSettings`), kitty, through `~/.config/kitty/shoji.conf` (`background_opacity`, `hide_window_decorations
 titlebar-only`; included at the end of kitty.conf), and Shoji Machines, which reads the keys from
 settings.json. They were `kittyOpacity` / `kittyHideTitlebar` under Terminal until 2026-11-14 (user:
 "is it weird to have machines read kitty config?"); the old keys are still read, never written.
