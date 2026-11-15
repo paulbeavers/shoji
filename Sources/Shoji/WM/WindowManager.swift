@@ -72,7 +72,9 @@ final class WindowManager {
     }
 
     func start() {
+        restoring = SessionFile.load()
         for app in NSWorkspace.shared.runningApplications { observe(app) }
+        finishRestore()
         relayout()
         if let app = NSWorkspace.shared.frontmostApplication { appActivated(app) }
         installMouseMonitor()
@@ -237,6 +239,14 @@ final class WindowManager {
         if isParkedPosition(frame) { // left parked by a crashed Shoji: bring it back
             floatFrame = CGRect(x: area.minX + 40, y: area.minY + 40, width: frame.width, height: frame.height)
         }
+        // Restarting: put the window back where it was (workspace, floating frame, pin).
+        let saved = restoring?.placement(of: id)
+        if let saved {
+            floating = saved.floating != nil
+            if let f = saved.floating, f.frame.count == 4 {
+                floatFrame = CGRect(x: f.frame[0], y: f.frame[1], width: f.frame[2], height: f.frame[3])
+            }
+        }
         ShojiLog.write("\(floating ? "floating" : "tiled") \(appName) [\(bundle)] role=\(role) subrole=\(subrole.isEmpty ? "none" : subrole) "
             + "resizable=\(resizable) closable=\(closable) frame=\(frame)")
 
@@ -252,6 +262,16 @@ final class WindowManager {
         if AX.bool(e, kAXMinimizedAttribute) == true {
             ShojiLog.write("\(appName): window is minimized; tiled when restored")
             dormant.insert(id)
+            return
+        }
+        if let saved, let ws = workspaces.first(where: { $0.index == saved.workspace }) {
+            w.isPinned = saved.floating?.pinned ?? false
+            if floating {
+                place(w, in: ws)
+            } else {
+                w.workspace = ws.index
+                restoredTiled[id] = w // its tree is rebuilt in finishRestore()
+            }
             return
         }
         place(w, in: current)
@@ -612,7 +632,65 @@ final class WindowManager {
         notifyChange()
     }
 
-    private func notifyChange() { onChange?() }
+    private func notifyChange() {
+        onChange?()
+        scheduleSessionSave()
+    }
+
+    // MARK: Session (survive restarts)
+
+    /// The previous run's session while the startup scan runs; nil afterwards.
+    private var restoring: SessionFile?
+    /// Tiled windows found during the startup scan, waiting for their workspace's tree.
+    private var restoredTiled: [CGWindowID: ManagedWindow] = [:]
+    private var sessionSave: DispatchWorkItem?
+
+    /// Rebuild every workspace's layout from the session, park the windows of hidden workspaces
+    /// and go back to the workspace that was current.
+    private func finishRestore() {
+        guard let s = restoring else { return }
+        defer { restoring = nil; restoredTiled = [:] }
+        var placed = 0
+        for space in s.workspaces {
+            guard let ws = workspaces.first(where: { $0.index == space.index }) else { continue }
+            let mine = restoredTiled.filter { $0.value.workspace == ws.index }
+            guard !mine.isEmpty else { continue }
+            let others = ws.tree.windows // placed normally during the scan (not in the session)
+            ws.tree.setRoot(space.tree?.build(mine))
+            for w in mine.values where ws.tree.leaf(for: w) == nil { ws.tree.insert(w, near: nil) }
+            for w in others where ws.tree.leaf(for: w) == nil { ws.tree.insert(w, near: nil) }
+            if let f = space.focused, let w = windows[f], ws.contains(w) { ws.noteFocused(w) }
+            placed += mine.count
+        }
+        for w in restoredTiled.values where !workspaces.contains(where: { $0.tree.leaf(for: w) != nil }) {
+            place(w, in: current) // its workspace no longer exists
+        }
+        if let ws = workspaces.first(where: { $0.index == s.current }) { current = ws }
+        for ws in workspaces where ws !== current {
+            for w in ws.windows where !w.isPinned { park(w) }
+        }
+        ShojiLog.write("session restored: \(placed) tiled windows back in their layouts, current workspace \(s.current)")
+        relayout(force: true)
+        if let f = s.focused, let w = windows[f], w.workspace == current.index { focus(w) }
+    }
+
+    private func scheduleSessionSave() {
+        guard restoring == nil else { return }
+        sessionSave?.cancel()
+        let work = DispatchWorkItem { [weak self] in self?.saveSession() }
+        sessionSave = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1, execute: work)
+    }
+
+    func saveSession() {
+        guard restoring == nil else { return }
+        SessionFile(current: current.index, focused: focusedID, workspaces: workspaces.map { ws in
+            SessionFile.Space(index: ws.index, tree: SessionFile.Node(ws.tree.root), floating: ws.floating.map { w in
+                let f = (w.isParked ? w.floatFrame : (w.frame ?? w.floatFrame)) ?? .zero
+                return SessionFile.Floating(id: w.id, frame: [f.minX, f.minY, f.width, f.height], pinned: w.isPinned)
+            }, focused: ws.focused?.id)
+        }).save()
+    }
 
     /// Windows of the current workspace with their on-screen rects, for borders and hovering.
     func visibleWindows() -> [(ManagedWindow, CGRect)] {
@@ -895,6 +973,8 @@ final class WindowManager {
 
     /// Before quitting: bring every parked window back on screen, so nothing is lost.
     func restoreAllWindows() {
+        sessionSave?.cancel()
+        saveSession() // before parked windows are brought back on screen
         let a = area
         var offset: CGFloat = 0
         for w in windows.values where w.isParked {
