@@ -32,6 +32,8 @@ final class WindowManager {
     private var pendingFloat: (bundleID: String, until: Date)?
     /// Ignore "app activated a window elsewhere" right after we switched workspaces ourselves.
     private var ignoreActivationUntil = Date.distantPast
+    /// When a window on the visible workspace last closed (see `systemFocused`).
+    private var closedHereAt = Date.distantPast
     private var mouseMonitor: Any?
     private var lastHover = Date.distantPast
     private var c: Config { .shared }
@@ -368,6 +370,9 @@ final class WindowManager {
     }
 
     private func removeWindow(_ w: ManagedWindow) {
+        let wasHere = !w.isParked && (current.contains(w) || w.isPinned)
+        let hadFocus = focusedID == w.id
+        if wasHere { closedHereAt = Date() }
         windows[w.id] = nil
         dormant.remove(w.id)
         settleWork.removeValue(forKey: w.id)?.cancel()
@@ -375,6 +380,15 @@ final class WindowManager {
         if focusedID == w.id { focusedID = nil }
         relayout()
         notifyChange()
+        // Like Hyprland: focus moves to the next window on this workspace — not to wherever the
+        // app (or macOS) puts it, which may be a window parked on another workspace.
+        if wasHere, hadFocus {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+                guard let self, self.focusedID == nil || self.focused.map({ !self.current.contains($0) && !$0.isPinned }) == true,
+                      let next = self.current.focused, !self.dormant.contains(next.id) else { return }
+                self.focus(next)
+            }
+        }
     }
 
     /// Minimized or hidden: out of the layout, but still known.
@@ -495,7 +509,17 @@ final class WindowManager {
         if w.workspace != current.index, !w.isPinned {
             // Hyprland's focus_on_activate: follow the app to its workspace.
             guard c.focusOnActivate, Date() > ignoreActivationUntil else { return }
-            switchTo(w.workspace, focusing: w)
+            // But closing a window makes its app (or macOS, if the app quit) focus another window,
+            // perhaps one parked on another workspace: that isn't the user asking to go there.
+            // The close and the focus change arrive in either order, so decide a moment later.
+            let before = focusedID
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in
+                guard let self, self.windows[w.id] === w, !self.dormant.contains(w.id),
+                      w.workspace != self.current.index, !w.isPinned,
+                      Date().timeIntervalSince(self.closedHereAt) > 0.6,
+                      before.map({ self.windows[$0] != nil }) ?? true else { return }
+                self.switchTo(w.workspace, focusing: w)
+            }
             return
         }
         setFocused(w)
