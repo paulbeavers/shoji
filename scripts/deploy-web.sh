@@ -4,6 +4,7 @@
 #     ./scripts/deploy-web.sh              # site + the DMG, if it changed
 #     ./scripts/deploy-web.sh --no-dmg     # site only
 #     ./scripts/deploy-web.sh --dry-run    # print every AWS call, make none
+#     ./scripts/deploy-web.sh --allow-unsigned  # publish a DMG that isn't notarized
 #
 # Build the DMG first with ./scripts/package.sh. Idempotent: run it again after
 # editing the page — it creates what's missing and updates the rest.
@@ -22,11 +23,13 @@ OUT="$HERE/build"
 
 DRY=0
 DO_DMG=1
+ALLOW_UNSIGNED=0
 for arg in "$@"; do
     case "$arg" in
         --dry-run) DRY=1 ;;
         --no-dmg)  DO_DMG=0 ;;
-        -h|--help) sed -n '2,13p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        --allow-unsigned) ALLOW_UNSIGNED=1 ;;
+        -h|--help) sed -n '2,14p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
         *) echo "unknown option: $arg (try --dry-run, --no-dmg)" >&2; exit 2 ;;
     esac
 done
@@ -55,6 +58,14 @@ if [[ $DO_DMG -eq 1 ]]; then
     [[ -n $dmg ]] || die "no DMG in $OUT — run ./scripts/package.sh first, or pass --no-dmg"
     DMG_KEY="$(basename "$dmg")"
     ok "DMG: $DMG_KEY ($(du -h "$dmg" | cut -f1 | tr -d ' '))"
+    # The page tells people the download just opens: only publish a notarized, stapled DMG.
+    if xcrun stapler validate -q "$dmg" 2>/dev/null; then
+        ok "signed and notarized"
+    elif [[ $ALLOW_UNSIGNED -eq 1 ]]; then
+        warn "NOT notarized — Gatekeeper will warn (--allow-unsigned)"
+    else
+        die "$DMG_KEY isn't notarized — package it on a Mac with the Developer ID certificates, or pass --allow-unsigned"
+    fi
 else
     # The page still has to link to something: the newest DMG already uploaded.
     DMG_KEY="$(aws s3 ls "s3://$BUCKET/" 2>/dev/null | awk '{print $4}' \

@@ -28,10 +28,15 @@ Requirements: macOS 13 or later, a Swift toolchain (Xcode Command Line Tools). N
 ```
 
 Copy the `.pkg` (or the `.dmg`) to the other Mac and double-click it: the macOS Installer puts
-**Shoji**, **Shoji Machines** and **Shoji Containers** in /Applications. The package isn't
-notarized, so the first time macOS may refuse it — System Settings → Privacy & Security →
-**Open Anyway** (or Control-click → Open). Then open Shoji and allow it under Accessibility. The
-other Mac needs Apple Silicon, macOS 13+ and kitty (Docker for Containers) — no developer tools.
+**Shoji**, **Shoji Machines** and **Shoji Containers** in /Applications. Then open Shoji and allow
+it under Accessibility. The other Mac needs Apple Silicon and macOS 13+ (kitty is optional — ⌥↩
+falls back to Terminal; Containers needs Docker) — no developer tools.
+
+On a Mac with **Developer ID Application** and **Developer ID Installer** certificates and a
+`notarytool` profile named `shoji-notary`, `package.sh` signs the apps (hardened runtime), signs
+the `.pkg` and `.dmg`, has Apple notarize both and staples the tickets — they open without any
+Gatekeeper warning. Without them (or with `--unsigned`) the build is unsigned and macOS asks once
+(System Settings → Privacy & Security → **Open Anyway**).
 
 ### The website
 

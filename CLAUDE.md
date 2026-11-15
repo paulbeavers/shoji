@@ -39,8 +39,25 @@ from a quarantined DMG anyway).
   shuts VMs down cleanly; waits up to 45 s; remembers whether Shoji was running).
   `postinstall`: `lsregister -f` each app as the console user (`launchctl asuser … sudo -u`),
   clear quarantine, reopen Shoji if it was running.
-- Unsigned/not notarized (no Developer ID): Gatekeeper asks once (Open Anyway). Never install
-  the package on the dev Mac from a test — inspect it with `pkgutil --expand-full` instead.
+- **Signed and notarized** (set up 2026-11-15): this Mac has "Developer ID Application" and
+  "Developer ID Installer" certificates for team `484E8Z6LVX` (created on developer.apple.com
+  from Keychain Access CSRs — Xcode refused although the user is Account Holder; double-clicking
+  the .cer failed with -25294, `security import <cer> -k ~/Library/Keychains/login.keychain-db`
+  worked) and a notarytool keychain profile `shoji-notary`. `package.sh` finds them itself:
+  re-signs the staged copies of the apps with `--options runtime --timestamp` (entitlements:
+  `Resources/Shoji.entitlements` = apple-events for the Dark/Light switch; Machines'
+  virtualization; none for Containers), `productbuild --sign`, notarizes + staples the pkg, then
+  signs, notarizes + staples the DMG, and runs `spctl` on both ("Notarized Developer ID").
+  Notarization takes a few minutes per file; a rejection stops the build and prints Apple's log.
+  The build scripts' **ad-hoc** signatures (fixed DR on the bundle id) stay for dev builds, so
+  the Accessibility grant for `build/Shoji.app` survives rebuilds. `--unsigned` forces the old
+  unsigned build; `deploy-web.sh` refuses a DMG without a stapled ticket unless
+  `--allow-unsigned`. Never install the package on the dev Mac from a test — inspect it with
+  `pkgutil --expand-full` instead.
+- First signed install on a Mac: the Developer ID signature is a new identity for macOS privacy
+  settings, so Shoji's Accessibility permission (and System Events control) is asked for again.
+- `write: Permission denied` (×4) during packaging is noise from the sandboxed shell; the
+  packages are complete and Apple accepts them.
 
 ## Website: https://shoji.pbcs.io (user request 2026-11-14/15)
 
