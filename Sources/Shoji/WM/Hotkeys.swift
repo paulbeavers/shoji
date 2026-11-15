@@ -29,6 +29,28 @@ struct Key {
         return Key(code: codes[c]!, label: String(c))
     }
 
+    /// A key by its shoji.conf name (case-insensitive): a–z, 0–9, Return, Tab, Space, arrows, …
+    static func named(_ raw: String) -> Key? {
+        let name = raw.trimmingCharacters(in: .whitespaces)
+        if name.count == 1, let ch = name.uppercased().first {
+            if ch.isLetter, ch.isASCII { return letter(ch) }
+            if let d = ch.wholeNumberValue { return digit(d) }
+        }
+        let named: [String: (Int, String)] = [
+            "return": (kVK_Return, "↩"), "enter": (kVK_Return, "↩"), "tab": (kVK_Tab, "Tab"), "space": (kVK_Space, "Space"),
+            "escape": (kVK_Escape, "Esc"), "delete": (kVK_Delete, "⌫"), "backspace": (kVK_Delete, "⌫"),
+            "left": (kVK_LeftArrow, "←"), "right": (kVK_RightArrow, "→"), "up": (kVK_UpArrow, "↑"), "down": (kVK_DownArrow, "↓"),
+            "comma": (kVK_ANSI_Comma, ","), "period": (kVK_ANSI_Period, "."), "slash": (kVK_ANSI_Slash, "/"),
+            "backslash": (kVK_ANSI_Backslash, "\\"), "semicolon": (kVK_ANSI_Semicolon, ";"), "apostrophe": (kVK_ANSI_Quote, "'"),
+            "grave": (kVK_ANSI_Grave, "`"), "minus": (kVK_ANSI_Minus, "-"), "equal": (kVK_ANSI_Equal, "="),
+            "bracketleft": (kVK_ANSI_LeftBracket, "["), "bracketright": (kVK_ANSI_RightBracket, "]"),
+            "f1": (kVK_F1, "F1"), "f2": (kVK_F2, "F2"), "f3": (kVK_F3, "F3"), "f4": (kVK_F4, "F4"), "f5": (kVK_F5, "F5"),
+            "f6": (kVK_F6, "F6"), "f7": (kVK_F7, "F7"), "f8": (kVK_F8, "F8"), "f9": (kVK_F9, "F9"), "f10": (kVK_F10, "F10"),
+            "f11": (kVK_F11, "F11"), "f12": (kVK_F12, "F12"),
+        ]
+        return named[name.lowercased()].map { Key(code: $0.0, label: $0.1) }
+    }
+
     static func digit(_ n: Int) -> Key {
         let codes = [kVK_ANSI_0, kVK_ANSI_1, kVK_ANSI_2, kVK_ANSI_3, kVK_ANSI_4,
                      kVK_ANSI_5, kVK_ANSI_6, kVK_ANSI_7, kVK_ANSI_8, kVK_ANSI_9]
@@ -44,8 +66,11 @@ struct Binding {
     let group: String
     let description: String
     let action: @MainActor () -> Void
+    /// A shoji.conf bind: its own modifiers (Carbon mask) and how they're shown.
+    var custom: (modifiers: UInt32, label: String)? = nil
 
     @MainActor var carbonModifiers: UInt32 {
+        if let custom { return custom.modifiers }
         var m = Config.shared.modifierKey.carbon
         switch extra {
         case .none: break
@@ -57,6 +82,7 @@ struct Binding {
     }
 
     @MainActor var label: String {
+        if let custom { return custom.label + key.label }
         let extraLabel: String
         switch extra {
         case .none: extraLabel = ""
@@ -93,6 +119,7 @@ final class Hotkeys {
                 failed.append(b.label) // taken by another app or the system
             }
         }
+        if !failed.isEmpty { ShojiLog.write("hotkeys taken by another app or macOS: \(failed.joined(separator: " "))") }
     }
 
     func unregisterAll() {
@@ -176,6 +203,15 @@ enum Bindings {
         b.append(Binding(extra: .shift, key: .tab, group: "Workspaces", description: "Previous workspace") { wm.cycleWorkspaces(-1) })
         b.append(Binding(extra: .none, key: .rightBracket, group: "Workspaces", description: "Next workspace") { wm.cycleWorkspaces(1) })
         b.append(Binding(extra: .none, key: .leftBracket, group: "Workspaces", description: "Previous workspace") { wm.cycleWorkspaces(-1) })
-        return b
+
+        // shoji.conf binds come first and replace Shoji's own on the same keys.
+        let user = UserConfig.shared.binds.map { u in
+            Binding(extra: .none, key: u.key, group: "Config",
+                    description: u.dispatcher + (u.argument.isEmpty ? "" : " " + u.argument), action: {
+                        Dispatcher.run(u.dispatcher, u.argument)
+                    }, custom: (u.modifiers, u.modLabel))
+        }
+        let taken = Set(user.map { "\($0.key.code)/\($0.carbonModifiers)" })
+        return user + b.filter { !taken.contains("\($0.key.code)/\($0.carbonModifiers)") }
     }
 }

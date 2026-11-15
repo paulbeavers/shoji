@@ -4,6 +4,7 @@ import AppKit
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var wm: WindowManager?
     private var workspaceMenu: WorkspaceMenu?
+    private let mouseBinds = MouseBinds()
     private var permissionWindow: NSWindow?
     private var permissionTimer: Timer?
     private var signalSources: [DispatchSourceSignal] = []
@@ -21,6 +22,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if let i = args.firstIndex(of: "--write-kitty"), i + 1 < args.count, let t = ThemeLibrary.theme(args[i + 1]) {
             ThemeSync.writeKitty(t)
             ThemeSync.writeKittySettings()
+            NSApp.terminate(nil)
+            return
+        }
+        if args.contains("--check-config") {
+            print(UserConfig.shared.check())
             NSApp.terminate(nil)
             return
         }
@@ -89,12 +95,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func start() {
         // Earlier versions auto-hid the menu bar and Dock; put back anything they left changed.
         SystemChrome.restore()
+        UserConfig.shared.start() // shoji.conf: rules apply to the windows found at startup too
         let wm = WindowManager()
         self.wm = wm
         wm.start()
         workspaceMenu = WorkspaceMenu()
         wm.onChange = { [weak self] in self?.workspaceMenu?.refresh() }
         Hotkeys.shared.register(Bindings.all())
+        mouseBinds.install()
+        NotificationCenter.default.addObserver(forName: .userConfigDidChange, object: nil, queue: .main) { _ in
+            MainActor.assumeIsolated {
+                Hotkeys.shared.register(Bindings.all()) // new binds
+                Config.shared.notifyChanged()           // workspace layouts
+            }
+        }
                 NotificationCenter.default.addObserver(forName: .configDidChange, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated {
                 guard let self else { return }

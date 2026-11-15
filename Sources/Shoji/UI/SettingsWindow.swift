@@ -105,6 +105,13 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
         toggle("Hide title bars", note: "No title bar or buttons (kitty: new windows). Mod+Q still closes them",
                get: { self.c.hideTitleBars }, set: { self.c.hideTitleBars = $0; self.scheduleWindowSettingsWrite() })
 
+        header("Config file", "Keybindings, window rules and startup programs, hyprland.conf-style")
+        let editButton = NSButton(title: "Edit shoji.conf", target: nil, action: nil)
+        editButton.bezelStyle = .rounded
+        bind(editButton) { UserConfig.edit() }
+        row((UserConfig.url.path as NSString).abbreviatingWithTildeInPath,
+            note: "Reloaded on save · errors show in a red banner", control: editButton, controlWidth: 130)
+
         header("Workspaces", "Floating workspaces let windows overlap and be moved freely")
         workspaceModes()
 

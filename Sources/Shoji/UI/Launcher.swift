@@ -217,6 +217,7 @@ enum HelpPanel {
         let c = Config.shared
         let bindings = Bindings.all()
         let groups = ["Apps", "Windows", "Focus & move", "Workspaces"]
+            + (bindings.contains { $0.group == "Config" } ? ["Config"] : []) // shoji.conf binds
         // Workspace lines collapse to ranges so the sheet stays short.
         var lines: [[(String, String)]] = groups.map { g in
             bindings.filter { $0.group == g && !$0.description.hasPrefix("Workspace ") && !$0.description.hasPrefix("Window to workspace") }
@@ -228,7 +229,7 @@ enum HelpPanel {
 
         let colW: CGFloat = 300, lineH: CGFloat = 21
         let colHeights = lines.map { CGFloat($0.count + 2) * lineH }
-        let h = max(colHeights[0] + colHeights[1], colHeights[2] + colHeights[3]) + 60
+        let h = max(colHeights.prefix(2).reduce(0, +), colHeights.dropFirst(2).reduce(0, +)) + 60
         let w = colW * 2 + 60
         let p = KeyPanel(size: CGSize(width: w, height: h))
         p.onCancel = { [weak p] in p?.orderOut(nil) }

@@ -278,6 +278,20 @@ final class WindowManager {
         if isParkedPosition(frame) { // left parked by a crashed Shoji: bring it back
             floatFrame = CGRect(x: area.minX + 40, y: area.minY + 40, width: frame.width, height: frame.height)
         }
+        // shoji.conf window rules (not for windows coming back from a restart).
+        let title = AX.string(e, kAXTitleAttribute) ?? ""
+        let rule = UserConfig.shared.rules(app: appName, bundle: bundle, title: title)
+        if restoring?.placement(of: id) == nil {
+            if rule.float { floating = true }
+            if rule.tile { floating = false }
+            if let size = rule.size {
+                let a = area
+                floatFrame = CGRect(x: a.midX - size.width / 2, y: a.midY - size.height / 2, width: size.width, height: size.height)
+            } else if rule.center {
+                let a = area
+                floatFrame = CGRect(x: a.midX - frame.width / 2, y: a.midY - frame.height / 2, width: frame.width, height: frame.height)
+            }
+        }
         // Restarting: put the window back where it was (workspace, floating frame, pin).
         let saved = restoring?.placement(of: id)
         if let saved {
@@ -286,7 +300,7 @@ final class WindowManager {
                 floatFrame = CGRect(x: f.frame[0], y: f.frame[1], width: f.frame[2], height: f.frame[3])
             }
         }
-        ShojiLog.write("\(floating ? "floating" : "tiled") \(appName) [\(bundle)] role=\(role) subrole=\(subrole.isEmpty ? "none" : subrole) "
+        ShojiLog.write("new window: \(appName) [\(bundle)] \(floating ? "floating" : "tiling") role=\(role) subrole=\(subrole.isEmpty ? "none" : subrole) "
             + "resizable=\(resizable) closable=\(closable) frame=\(frame)")
 
         let w = ManagedWindow(id: id, pid: pid, element: e, workspace: current.index, floating: floating)
@@ -303,7 +317,15 @@ final class WindowManager {
             dormant.insert(id)
             return
         }
-        if let saved, let ws = workspaces.first(where: { $0.index == saved.workspace }) {
+        // A `workspace N [silent]` rule.
+        if saved == nil, let n = rule.workspace, let ws = workspaces.first(where: { $0.index == n }), ws !== current {
+            place(w, in: ws)
+            park(w)
+            if isNew && !rule.silent { switchTo(n, focusing: w) }
+            notifyChange()
+            return
+        }
+        if let saved, let ws = workspace(index: saved.workspace) {
             w.isPinned = saved.floating?.pinned ?? false
             if floating {
                 place(w, in: ws)
@@ -357,7 +379,7 @@ final class WindowManager {
             guard !dormant.contains(w.id) else { return }
             dormant.insert(w.id)
             if w.isFloating { w.floatFrame = w.frame ?? w.floatFrame }
-            workspaces.first { $0.contains(w) }?.remove(w)
+            containing(w)?.remove(w)
         } else {
             guard dormant.remove(w.id) != nil else { return }
             w.isParked = false
@@ -657,7 +679,10 @@ final class WindowManager {
     var focused: ManagedWindow? { focusedID.flatMap { windows[$0] } }
 
     func focus(_ w: ManagedWindow) {
-        if w.workspace != current.index, !w.isPinned { switchTo(w.workspace, focusing: w); return }
+        if w.workspace != current.index, !w.isPinned {
+            switchTo(w.workspace, focusing: w)
+            return
+        }
         AX.set(w.element, kAXMainAttribute, kCFBooleanTrue)
         AX.raise(w.element)
         if let app = appElements[w.pid] { AX.set(app, kAXFrontmostAttribute, kCFBooleanTrue) }
@@ -667,7 +692,7 @@ final class WindowManager {
     private func setFocused(_ w: ManagedWindow) {
         if focusedID != w.id { previousFocusedID = focusedID }
         focusedID = w.id
-        workspaces.first { $0.contains(w) }?.noteFocused(w)
+        containing(w)?.noteFocused(w)
         notifyChange()
     }
 
@@ -691,7 +716,7 @@ final class WindowManager {
         defer { restoring = nil; restoredTiled = [:] }
         var placed = 0
         for space in s.workspaces {
-            guard let ws = workspaces.first(where: { $0.index == space.index }) else { continue }
+            guard let ws = workspace(index: space.index) else { continue }
             let mine = restoredTiled.filter { $0.value.workspace == ws.index }
             guard !mine.isEmpty else { continue }
             let others = ws.tree.windows // placed normally during the scan (not in the session)
@@ -821,9 +846,10 @@ final class WindowManager {
     }
 
     func moveFocused(to index: Int, follow: Bool) {
-        guard let w = focused, let target = workspaces.first(where: { $0.index == index }), target !== current else { return }
+        guard let w = focused, let from = containing(w), let target = workspaces.first(where: { $0.index == index }),
+              target !== from else { return }
         if w.isFloating { w.floatFrame = w.frame ?? w.floatFrame }
-        current.remove(w)
+        from.remove(w)
         w.isPinned = false
         place(w, in: target)
         park(w)
@@ -831,6 +857,55 @@ final class WindowManager {
         if follow { switchTo(index, focusing: w) } else if let next = current.focused ?? current.windows.last { focus(next) }
         notifyChange()
     }
+
+    /// A workspace by index.
+    func workspace(index: Int) -> Workspace? { workspaces.first { $0.index == index } }
+
+    /// The workspace a window is on.
+    func containing(_ w: ManagedWindow) -> Workspace? { workspaces.first { $0.contains(w) } }
+
+    // MARK: Mouse (Mod+drag, see MouseBinds)
+
+    /// The managed window on top at a point (AX coordinates), if it's on screen.
+    func managedWindow(at p: CGPoint) -> ManagedWindow? {
+        guard let id = topWindowID(at: p), let w = windows[id], !w.isParked, !dormant.contains(id) else { return nil }
+        return w
+    }
+
+    /// Where a tiled window's tile is.
+    func tileRect(of w: ManagedWindow) -> CGRect? { containing(w)?.tree.rect(for: w) }
+
+    /// Mod+drag of a floating window (move or resize).
+    func mouseSetFloatingFrame(_ w: ManagedWindow, _ f: CGRect) {
+        w.floatFrame = f
+        w.setFrame(f)
+    }
+
+    /// Mod+drag of a tiled window: it follows the pointer; dropping it swaps (`mouseDropTiled`).
+    func mouseMoveTiled(_ w: ManagedWindow, origin: CGPoint) {
+        guard let size = w.expectedFrame?.size ?? w.frame?.size else { return }
+        w.expectedFrame = CGRect(origin: origin, size: size).integral
+        AX.setPosition(w.element, origin)
+        AX.raise(w.element)
+    }
+
+    func mouseDropTiled(_ w: ManagedWindow, at p: CGPoint) {
+        guard let ws = containing(w) else { return }
+        if let target = ws.tree.windows.first(where: { $0 !== w && (ws.tree.rect(for: $0)?.contains(p) ?? false) }) {
+            ws.tree.swap(w, target)
+        }
+        relayout(force: true)
+        notifyChange()
+    }
+
+    /// Mod+right-drag of a tiled window: its edges move the split borders, live.
+    func mouseResizeTiled(_ w: ManagedWindow, to rect: CGRect) {
+        guard let ws = containing(w), ws.tree.leaf(for: w) != nil else { return }
+        ws.tree.adopt(w, resizedTo: rect, gap: c.gapsIn * 2)
+        relayout()
+    }
+
+    func mouseDragEnded() { notifyChange() }
 
     /// For the bar.
     var workspaceStates: [(index: Int, occupied: Bool, active: Bool)] {

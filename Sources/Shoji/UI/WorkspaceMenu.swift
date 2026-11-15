@@ -181,6 +181,7 @@ final class WorkspaceMenu: NSObject {
         add("Keybindings", key: "\(c.modSymbol)/") { HelpPanel.toggle() }
         add("Stats", key: "\(c.modSymbol)I") { StatsWindow.toggle() }
         add("Settings…", key: "\(c.modSymbol),") { SettingsWindow.show() }
+        add("Edit shoji.conf…") { UserConfig.edit() }
         menu.addItem(.separator())
         add("Quit Shoji", key: "\(c.modSymbol)⇧M") { NSApp.terminate(nil) }
         menu.popUp(positioning: nil, at: CGPoint(x: 0, y: -4), in: pillsView)

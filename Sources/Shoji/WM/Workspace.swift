@@ -17,7 +17,10 @@ final class Workspace {
 
     init(index: Int) { self.index = index }
 
-    var isFloatingMode: Bool { Config.shared.floatingWorkspaces.contains(index) }
+    /// Floating by Settings, or by a `workspace = N, floating` line in shoji.conf.
+    var isFloatingMode: Bool {
+        Config.shared.floatingWorkspaces.contains(index) || UserConfig.shared.floatingWorkspaces.contains(index)
+    }
     var windows: [ManagedWindow] { tree.windows + floating }
     var isEmpty: Bool { windows.isEmpty }
     var focused: ManagedWindow? { history.last { w in windows.contains { $0 === w } } }
