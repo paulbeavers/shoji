@@ -859,6 +859,13 @@ final class WindowManager {
         focus(list[(i + 1) % list.count])
     }
 
+    /// Shoji is about to open a new window of a running app (Mod+Return…): activating the app makes
+    /// macOS focus one of its existing windows — possibly parked on another workspace — and
+    /// following that would take the user away, so the new window opened there instead of here.
+    func holdWorkspace(for seconds: TimeInterval = 1.5) {
+        ignoreActivationUntil = max(ignoreActivationUntil, Date().addingTimeInterval(seconds))
+    }
+
     /// The next window this app opens floats, centered (Mod+Shift+Return).
     func floatNextWindow(of bundleID: String) {
         pendingFloat = (bundleID, Date().addingTimeInterval(5))

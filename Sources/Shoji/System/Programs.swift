@@ -39,6 +39,7 @@ enum Programs {
     /// way Hyprland's exec opens a fresh terminal every time.
     static func newWindow(_ bundleID: String) {
         if let app = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID).first {
+            WindowManager.shared?.holdWorkspace() // the new window opens here, not where the app's others are
             AX.set(AXUIElementCreateApplication(app.processIdentifier), kAXFrontmostAttribute, kCFBooleanTrue)
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
                 postCommandN(to: app.processIdentifier)
