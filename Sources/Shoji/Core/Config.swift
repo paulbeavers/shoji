@@ -255,7 +255,12 @@ final class Config {
         guard let data = try? enc.encode(snapshot()) else { return }
         try? FileManager.default.createDirectory(at: Self.directory, withIntermediateDirectories: true)
         try? data.write(to: Self.settingsURL, options: .atomic)
+        // Shoji Machines (another process) recolours too.
+        DistributedNotificationCenter.default().postNotificationName(Self.changedAcrossApps, object: nil, userInfo: nil,
+                                                                     deliverImmediately: true)
     }
+
+    nonisolated static let changedAcrossApps = Notification.Name("dev.shoji.settingsChanged")
 
     func resetToDefaults() {
         let d = Config()

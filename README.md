@@ -19,6 +19,15 @@ click one to switch, right-click for the menu. Quitting Shoji (Mod+Shift+M, the 
 
 Requirements: macOS 13 or later, a Swift toolchain (Xcode Command Line Tools). No SIP changes.
 
+## Machines (Linux VMs)
+
+**Mod+M** opens **Shoji Machines**, the companion app from the sibling repo `shoji-machines`
+(build it there first): create Linux server
+VMs (Debian, Ubuntu, Fedora, Rocky, Alma, Alpine cloud images on Apple's Virtualization
+framework), start and stop them, open a VM's console or an SSH session in a kitty window, delete
+them. VMs run in Shoji Machines, so they keep running when Shoji restarts; quitting Shoji Machines
+shuts them down cleanly. VMs live in `~/.config/shoji/vms`.
+
 ## Keybindings
 
 Mod is **⌥** by default (Settings: ⌥, ⌃⌥ or ⌘) — the Lucent config's ALT-mod bindings.
@@ -41,6 +50,7 @@ Mod is **⌥** by default (Settings: ⌥, ⌃⌥ or ⌘) — the Lucent config's
 | Mod+Tab, Mod+] / Mod+⇧Tab, Mod+[ | Next / previous workspace |
 | Mod+⌃Tab / Mod+` | Cycle windows / last window |
 | Mod+, / Mod+/ | Settings / keybindings sheet |
+| Mod+M | Machines (Linux VMs) |
 | Mod+⇧M | Exit Shoji |
 
 Mouse: drag a tiled window onto another to swap them; drag its edges to resize the split.

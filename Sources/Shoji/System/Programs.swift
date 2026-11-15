@@ -51,6 +51,20 @@ enum Programs {
         }
     }
 
+    /// Shoji Machines, the VM companion app (its own repo, ../shoji-machines; its build registers
+    /// it with Launch Services).
+    static let machinesBundleID = "dev.shoji.Machines"
+
+    /// Mod+M: open Shoji Machines, or bring its window forward.
+    static func openMachines() {
+        guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: machinesBundleID) else {
+            ShojiLog.write("Shoji Machines isn't installed (build ../shoji-machines)")
+            NSSound.beep()
+            return
+        }
+        launch(url: url)
+    }
+
     static func launch(_ bundleID: String) {
         guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) else { NSSound.beep(); return }
         launch(url: url)

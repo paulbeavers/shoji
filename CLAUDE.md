@@ -111,6 +111,13 @@ build/Shoji.app/Contents/MacOS/Shoji --preview out.png   # offscreen render of t
 - kitty: ⌘↩ makes panes inside one OS window (kitty's own layout — no gaps/rounding); ⌘N / Mod+↩
   make OS windows that Shoji tiles. The user's startup.session opens 2 panes; that's theirs.
 
+## Shoji Machines (VMs) — separate repo `../shoji-machines`
+
+The VM companion app is its own repo (user decision 2026-11-14: first bundled here, then split
+out). Shoji only opens it: Mod+M / "Machines…" → `Programs.openMachines()` finds bundle id
+`dev.shoji.Machines` through Launch Services (its build script runs `lsregister`). `Config.save()`
+posts the distributed notification `dev.shoji.settingsChanged` so it recolours on theme changes.
+
 ## Theme sync (`ThemeSync`, user request 2026-11-14)
 
 Mirrors Lucent's theme.sh: each of the four is a Settings toggle (default on), applied on theme

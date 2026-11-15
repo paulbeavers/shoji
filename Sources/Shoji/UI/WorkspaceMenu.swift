@@ -176,6 +176,7 @@ final class WorkspaceMenu: NSObject {
         }
         menu.addItem(.separator())
         add("App Launcher…", key: "\(c.modSymbol)⇧D") { Launcher.shared.show() }
+        add("Machines…", key: "\(c.modSymbol)M") { Programs.openMachines() }
         add("Keybindings", key: "\(c.modSymbol)/") { HelpPanel.toggle() }
         add("Settings…", key: "\(c.modSymbol),") { SettingsWindow.show() }
         menu.addItem(.separator())
