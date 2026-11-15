@@ -96,6 +96,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Earlier versions auto-hid the menu bar and Dock; put back anything they left changed.
         SystemChrome.restore()
         UserConfig.shared.start() // shoji.conf: rules apply to the windows found at startup too
+        ThemeSync.refreshKittySettings() // kitty's shoji.conf, if it predates a newer setting
         let wm = WindowManager()
         self.wm = wm
         wm.start()

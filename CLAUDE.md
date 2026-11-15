@@ -223,6 +223,13 @@ titlebar-only`; included at the end of kitty.conf), and Shoji Machines, which re
 settings.json. They were `kittyOpacity` / `kittyHideTitlebar` under Terminal until 2026-11-14 (user:
 "is it weird to have machines read kitty config?"); the old keys are still read, never written.
 
+`terminalPadding` (0–24 pt, default 8) → kitty's `window_padding_width` in the same file. With the
+title bar hidden, macOS rounds the window's corners into kitty's text (user saw it on another Mac;
+this Mac's own kitty.conf had `window_padding_width 0 6`, which hid it — Shoji's file now overrides
+that). Shoji can't change another app's corner radius, only keep the text clear of it. At launch
+`ThemeSync.refreshKittySettings()` updates an existing kitty shoji.conf (so new keys arrive without
+touching Settings); it never creates one, and it only rewrites/reloads kitty when the text changed.
+
 ## Companion apps: `../shoji-machines` (Mod+M) and `../shoji-containers` (Mod+O)
 
 Both are separate repos and regular apps, found by bundle id (`dev.shoji.Machines`,

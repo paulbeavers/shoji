@@ -92,6 +92,7 @@ struct SettingsFile: Codable {
     var windowOpacity: Double?
     var hideTitleBars: Bool?
     var mouseBinds: Bool?
+    var terminalPadding: Double?
 }
 
 /// Runtime configuration, modelled on hyprland.conf's `general` and `decoration` sections.
@@ -132,6 +133,10 @@ final class Config {
     var windowOpacity: Double = 0.9
     /// No title bar or traffic-light buttons (kitty: hide_window_decorations titlebar-only).
     var hideTitleBars = false
+    /// Space between kitty's text and its window edge, in points (kitty: window_padding_width).
+    /// Keeps text out of the rounded corners — macOS rounds them into the text when the title
+    /// bar is hidden.
+    var terminalPadding: Double = 8
     var themeSetsAccent = true
     var modifierKey: ModifierKey = .option
     var modSymbol: String { modifierKey.symbol }
@@ -220,7 +225,7 @@ final class Config {
             themeSetsAppearance: themeSetsAppearance, themeSetsWallpaper: themeSetsWallpaper,
             themeSetsKitty: themeSetsKitty, themeSetsAccent: themeSetsAccent,
             kittyOpacity: nil, kittyHideTitlebar: nil, windowOpacity: windowOpacity, hideTitleBars: hideTitleBars,
-            mouseBinds: mouseBinds)
+            mouseBinds: mouseBinds, terminalPadding: terminalPadding)
     }
 
     func apply(_ f: SettingsFile) {
@@ -234,6 +239,7 @@ final class Config {
         if let v = f.focusFollowsMouse { focusFollowsMouse = v }
         if let v = f.focusOnActivate { focusOnActivate = v }
         if let v = f.mouseBinds { mouseBinds = v }
+        if let v = f.terminalPadding { terminalPadding = min(24, max(0, v)) }
         if let v = f.modifierKey.flatMap(ModifierKey.init(rawValue:)) { modifierKey = v }
         if let v = f.floatingWorkspaces { floatingWorkspaces = Set(v) }
         if let v = f.terminalApp { terminalApp = v }

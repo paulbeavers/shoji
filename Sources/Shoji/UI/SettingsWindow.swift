@@ -108,6 +108,8 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
                get: { c.windowOpacity }, set: { [weak self] in c.windowOpacity = $0; self?.scheduleWindowSettingsWrite() })
         toggle("Hide title bars", note: "No title bar or buttons (kitty: new windows). Mod+Q still closes them",
                get: { c.hideTitleBars }, set: { [weak self] in c.hideTitleBars = $0; self?.scheduleWindowSettingsWrite() })
+        slider("Terminal padding", 0...24, step: 1, fmt: "%.0f pt",
+               get: { c.terminalPadding }, set: { [weak self] in c.terminalPadding = $0; self?.scheduleWindowSettingsWrite() })
 
         header("Config file", "Keybindings, window rules and startup programs, hyprland.conf-style")
         let editButton = NSButton(title: "Edit shoji.conf", target: nil, action: nil)
