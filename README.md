@@ -58,6 +58,7 @@ Mod is **⌥** by default (Settings: ⌥, ⌃⌥ or ⌘) — the Lucent config's
 | Mod+, / Mod+/ | Settings / keybindings sheet |
 | Mod+M | Machines (Linux VMs) |
 | Mod+O | Containers (Docker) |
+| Mod+I | Stats (Shoji, managed apps, system) |
 | Mod+⇧M | Exit Shoji |
 
 Mouse: drag a tiled window onto another to swap them; drag its edges to resize the split.

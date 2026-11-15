@@ -6,15 +6,44 @@ import UniformTypeIdentifiers
 final class SettingsWindow: NSObject, NSWindowDelegate {
     private static var current: SettingsWindow?
 
+    /// Open Settings as a tile in the current workspace (or go to it if it's already open).
     static func show() {
+        let wm = WindowManager.shared
+        if let s = current, s.window.isVisible {
+            wm?.tileOwnWindow(s.window) // already tiled: focuses it (switching workspace if needed)
+            return
+        }
         let s = current ?? SettingsWindow()
         current = s
         NSApp.activate(ignoringOtherApps: true)
         s.window.makeKeyAndOrderFront(nil)
+        DispatchQueue.main.async { wm?.tileOwnWindow(s.window) }
+    }
+
+    /// `--preview-settings out.png`: render the window's contents offscreen.
+    static func renderPreview(to path: String) {
+        let s = SettingsWindow()
+        s.view.frame = CGRect(x: 0, y: 0, width: 720, height: 900)
+        s.layout()
+        s.view.layoutSubtreeIfNeeded()
+        let rep = s.view.bitmapImageRepForCachingDisplay(in: s.view.bounds)!
+        s.view.cacheDisplay(in: s.view.bounds, to: rep)
+        try? rep.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: path))
+    }
+
+    /// Mod+,: open Settings, or close it if it's the focused window.
+    static func toggle() {
+        if let s = current, s.window.isVisible, WindowManager.shared?.isFocused(s.window) ?? s.window.isKeyWindow {
+            s.window.performClose(nil)
+        } else {
+            show()
+        }
     }
 
     let view: NSView
-    let window: NSWindow
+    let window: ShojiWindow
+    /// Always a way to close it — the title bar (and its close button) may be hidden.
+    private let doneButton = NSButton(title: "Done", target: nil, action: nil)
 
     private let scroll = NSScrollView()
     private let doc = FlippedView()
@@ -28,7 +57,7 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
     override init() {
         let root = FlippedView()
         view = root
-        window = NSWindow(contentRect: CGRect(x: 0, y: 0, width: 720, height: 760),
+        window = ShojiWindow(contentRect: CGRect(x: 0, y: 0, width: 720, height: 760),
                           styleMask: [.titled, .closable, .resizable, .miniaturizable], backing: .buffered, defer: false)
         super.init()
         window.title = "Shoji Settings"
@@ -36,15 +65,18 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
         window.isReleasedWhenClosed = false
         window.delegate = self
         window.center()
-        root.wantsLayer = true
-        root.layer?.backgroundColor = Config.shared.mantle.cgColor
         root.appearance = Config.shared.appearance
+        window.applyWindowSettings(background: root)
 
         scroll.drawsBackground = false
         scroll.hasVerticalScroller = true
         scroll.autohidesScrollers = true
         scroll.documentView = doc
         root.addSubview(scroll)
+        doneButton.bezelStyle = .rounded
+        doneButton.target = window
+        doneButton.action = #selector(NSWindow.performClose(_:))
+        root.addSubview(doneButton) // above the scrolling form
         root.onLayout = { [weak self] in self?.layout() }
         build()
         NotificationCenter.default.addObserver(self, selector: #selector(configChanged), name: .configDidChange, object: nil)
@@ -67,7 +99,7 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
         toggle("Follow apps to their workspace", note: "Activating a window elsewhere (Dock, ⌘Tab) switches to its workspace",
                get: { self.c.focusOnActivate }, set: { self.c.focusOnActivate = $0 })
 
-        header("Windows", "Applied to kitty and Shoji Machines")
+        header("Windows", "Applied to kitty, Shoji Machines, Shoji Containers and Stats")
         slider("Window opacity", 0.3...1, step: 0.01, fmt: "%.0f%%", scale: 100,
                get: { self.c.windowOpacity }, set: { self.c.windowOpacity = $0; self.scheduleWindowSettingsWrite() })
         toggle("Hide title bars", note: "No title bar or buttons (kitty: new windows). Mod+Q still closes them",
@@ -300,6 +332,7 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
     }
 
     func windowWillClose(_ notification: Notification) {
+        WindowManager.shared?.releaseOwnWindow(window)
         SettingsWindow.current = nil
     }
 
@@ -320,6 +353,8 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
 
     private func layout() {
         scroll.frame = view.bounds
+        doneButton.sizeToFit()
+        doneButton.frame.origin = CGPoint(x: view.bounds.width - doneButton.frame.width - 16, y: 12)
         let width = max(320, min(columnWidth, view.bounds.width - 48))
         let x = (view.bounds.width - width) / 2
         var y: CGFloat = 8
@@ -336,6 +371,7 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
     private var builtTheme = Config.shared.themeID
 
     @objc private func configChanged() {
+        window.applyWindowSettings(background: view)
         if c.themeID != builtTheme {
             builtTheme = c.themeID
             // Rebuild after the current event: the change may come from one of our own controls.
@@ -354,7 +390,7 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
         refreshers.removeAll()
         targets.removeAll()
         view.appearance = c.appearance
-        view.layer?.backgroundColor = c.mantle.cgColor
+        window.applyWindowSettings(background: view)
         build()
         layout()
         scroll.contentView.scroll(to: offset)

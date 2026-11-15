@@ -154,6 +154,44 @@ final class WindowManager {
 
     private var refcon: UnsafeMutableRawPointer { Unmanaged.passUnretained(self).toOpaque() }
 
+    // MARK: Shoji's own tiled windows (Stats)
+
+    /// Shoji's own windows that are tiled like app windows. Its other windows (Settings, the
+    /// launcher, the keybindings sheet) are never managed.
+    private var ownTiled = Set<CGWindowID>()
+
+    /// Tile one of Shoji's own windows (already on screen) into the current workspace.
+    func tileOwnWindow(_ window: NSWindow, attempt: Int = 0) {
+        let id = CGWindowID(window.windowNumber)
+        if let w = windows[id] { focus(w); return }
+        let pid = getpid()
+        if observers[pid] == nil { // per-window notifications only; no app-level ones for Shoji
+            var obs: AXObserver?
+            guard AXObserverCreate(pid, axCallback, &obs) == .success, let obs else { return }
+            CFRunLoopAddSource(CFRunLoopGetMain(), AXObserverGetRunLoopSource(obs), .commonModes)
+            observers[pid] = obs
+            appElements[pid] = AXUIElementCreateApplication(pid)
+        }
+        guard let app = appElements[pid],
+              let e = AX.windows(ofApp: app).first(where: { AX.windowID($0) == id }) else {
+            if attempt < 5 { // the AX side of a just-shown window can lag a moment
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in self?.tileOwnWindow(window, attempt: attempt + 1) }
+            }
+            return
+        }
+        ownTiled.insert(id)
+        addWindow(e, pid: pid, isNew: true)
+    }
+
+    /// One of Shoji's own tiled windows closed: take it out of the layout.
+    func releaseOwnWindow(_ window: NSWindow) {
+        let id = CGWindowID(window.windowNumber)
+        ownTiled.remove(id)
+        if let w = windows[id] { removeWindow(w) }
+    }
+
+    func isFocused(_ window: NSWindow) -> Bool { focusedID == CGWindowID(window.windowNumber) }
+
     private func forget(pid: pid_t) {
         for w in windows.values where w.pid == pid { removeWindow(w) }
         scanReports[pid] = nil
@@ -182,6 +220,7 @@ final class WindowManager {
     /// Manage a window. `isNew`: it just opened (focus it, as Hyprland does). Windows that aren't
     /// fully formed yet (no id, no subrole — some apps fill these in a moment later) are retried.
     private func addWindow(_ e: AXUIElement, pid: pid_t, isNew: Bool = false, attempt: Int = 0) {
+        if pid == getpid(), !(AX.windowID(e).map { ownTiled.contains($0) } ?? false) { return } // Settings etc.
         let appName = NSRunningApplication(processIdentifier: pid)?.localizedName ?? "pid \(pid)"
         func retryLater(_ why: String) {
             guard attempt < 3 else { ShojiLog.write("ignored \(appName): \(why)"); return }
@@ -801,6 +840,9 @@ final class WindowManager {
 
     var hasWindows: Bool { !windows.isEmpty }
 
+    /// Every managed window (for Stats), minimized/hidden ones excluded.
+    var allWindows: [ManagedWindow] { windows.values.filter { !dormant.contains($0.id) } }
+
     func windows(ofPID pid: pid_t) -> [ManagedWindow] { windows.values.filter { $0.pid == pid } }
 
     /// Dock click: the app's most recent window, wherever it is.
@@ -922,6 +964,10 @@ final class WindowManager {
 
     func closeFocused() {
         guard let w = focused else { return }
+        if w.pid == getpid(), let own = NSApp.window(withWindowNumber: Int(w.id)) {
+            own.performClose(nil)
+            return
+        }
         if AX.close(w.element) { return }
         // No close button (title bar hidden): make sure it's the app's front window, then ⌘W.
         focus(w)

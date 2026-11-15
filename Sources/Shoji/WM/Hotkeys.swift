@@ -129,10 +129,11 @@ enum Bindings {
             Binding(extra: .none, key: .letter("E"), group: "Apps", description: "File manager") { Programs.open(.files) },
             Binding(extra: .none, key: .letter("B"), group: "Apps", description: "Browser") { Programs.open(.browser) },
             Binding(extra: .none, key: .letter("N"), group: "Apps", description: "Editor") { Programs.open(.editor) },
-            Binding(extra: .none, key: .comma, group: "Apps", description: "Shoji settings") { SettingsWindow.show() },
+            Binding(extra: .none, key: .comma, group: "Apps", description: "Shoji settings") { SettingsWindow.toggle() },
             Binding(extra: .none, key: .letter("M"), group: "Apps", description: "Machines (Linux VMs)") { Programs.openMachines() },
             Binding(extra: .none, key: .letter("O"), group: "Apps", description: "Containers (Docker)") { Programs.openContainers() },
             Binding(extra: .none, key: .slash, group: "Apps", description: "Keybindings") { HelpPanel.toggle() },
+            Binding(extra: .none, key: .letter("I"), group: "Apps", description: "Stats") { StatsWindow.toggle() },
 
             Binding(extra: .none, key: .letter("Q"), group: "Windows", description: "Close window") { wm.closeFocused() },
             Binding(extra: .none, key: .letter("J"), group: "Windows", description: "Flip split axis (dwindle)") { wm.toggleSplit() },

@@ -24,6 +24,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             NSApp.terminate(nil)
             return
         }
+        if let i = args.firstIndex(of: "--preview-settings"), i + 1 < args.count {
+            SettingsWindow.renderPreview(to: args[i + 1])
+            NSApp.terminate(nil)
+            return
+        }
+        if let i = args.firstIndex(of: "--preview-stats"), i + 1 < args.count {
+            StatsWindow.renderPreview(to: args[i + 1])
+            return
+        }
         // One Shoji at a time.
         let others = NSRunningApplication.runningApplications(withBundleIdentifier: Bundle.main.bundleIdentifier ?? "")
             .filter { $0.processIdentifier != getpid() }
