@@ -100,8 +100,13 @@ final class WorkspaceMenu: NSObject {
             layout.append((s.index, s.occupied, s.active, CGRect(x: x, y: 3, width: w, height: h)))
             x += w + gap
         }
-        width = max(0, x - gap)
-        ranges = layout.map { ($0.0, $0.3.minX, $0.3.maxX) }
+        // A settings gear after the pills (range index 0 = the gear).
+        let gearSymbol = NSImage(systemSymbolName: "gearshape.fill", accessibilityDescription: "Shoji Settings")?
+            .withSymbolConfiguration(.init(pointSize: 12, weight: .semibold))
+        let gearSize = gearSymbol?.size ?? CGSize(width: 14, height: 14)
+        let gearRect = CGRect(x: x + 4, y: ((22 - gearSize.height) / 2).rounded(), width: gearSize.width, height: gearSize.height)
+        width = gearRect.maxX + 1
+        ranges = layout.map { ($0.0, $0.3.minX, $0.3.maxX) } + [(0, gearRect.minX - 3, gearRect.maxX + 3)]
         let gradient = c.activeBorder
         let activeText = c.crust
         let image = NSImage(size: CGSize(width: width, height: 22), flipped: false) { _ in
@@ -123,6 +128,14 @@ final class WorkspaceMenu: NSObject {
                 let size = label.size()
                 label.draw(at: CGPoint(x: r.midX - size.width / 2, y: r.midY - size.height / 2))
             }
+            if let gearSymbol {
+                // Tint the symbol with the menu bar's text colour (resolved at draw time).
+                NSGraphicsContext.saveGraphicsState()
+                gearSymbol.draw(in: gearRect)
+                NSColor.labelColor.withAlphaComponent(0.85).set()
+                gearRect.fill(using: .sourceAtop)
+                NSGraphicsContext.restoreGraphicsState()
+            }
             return true
         }
         image.isTemplate = false
@@ -133,7 +146,9 @@ final class WorkspaceMenu: NSObject {
         let x = viewX - (pillsView.bounds.width - imageWidth) / 2
         let hit = isMenuClick ? nil : pillRanges.first(where: { x >= $0.minX - 2 && x <= $0.maxX + 2 })
         DispatchQueue.main.async { [weak self] in
-            if let hit {
+            if let hit, hit.index == 0 {
+                SettingsWindow.show()
+            } else if let hit {
                 WindowManager.shared?.switchTo(hit.index)
             } else {
                 self?.showMenu()
