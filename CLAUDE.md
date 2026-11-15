@@ -42,6 +42,35 @@ from a quarantined DMG anyway).
 - Unsigned/not notarized (no Developer ID): Gatekeeper asks once (Open Anyway). Never install
   the package on the dev Mac from a test — inspect it with `pkgutil --expand-full` instead.
 
+## Website: https://shoji.pbcs.io (user request 2026-11-14/15)
+
+`web/` (index.html, style.css, assets/) is the public download page, hosted like starch's site
+(`../starch`, https://starch.pbcs.io): a **private** S3 bucket `shoji-downloads-133313813536`
+(us-east-1) read only by CloudFront `E18KDRAD68WK90` (Origin Access Control, Block Public Access
+on, direct S3 URLs return 403), ACM certificate for shoji.pbcs.io, A/AAAA alias in the Route 53
+zone `pbcs.io`.
+- Publish: `./scripts/package.sh` then `./scripts/deploy-web.sh` (`--no-dmg` = page only,
+  `--dry-run`). It uploads the newest `build/Shoji-<date>-<commit>.dmg` + `.sha256` (skipped when
+  the checksum is unchanged), server-side copies it to `Shoji.dmg` (stable "latest" URL), fills
+  `DOWNLOAD-URL` / `DOWNLOAD-SIZE` / `RELEASE-VERSION` into a staged copy of the page (the repo
+  keeps the placeholders), uploads, and invalidates CloudFront. The page is `no-cache`.
+- `./scripts/deploy-cdn.sh` was a one-time setup (certificate, OAC, distribution, bucket policy,
+  DNS) — idempotent, only re-run if that infrastructure changes. Only it writes the bucket policy.
+- The scripts use macOS tools (`perl -pi`, `shasum -a 256`, `date -j`); starch's originals use
+  GNU `sed -i`/`sha256sum`. AWS credentials expire: if `aws sts get-caller-identity` fails, ask the
+  user to run `! aws login`.
+- **The site is for end users, not developers** (user: "This is an end user facing site").
+  Plain language, no build commands, terminals, config syntax, git hashes, checksums, `brew`, or
+  jargon (Hyprland, dwindle, SIP, Accessibility API). The release label is a date ("14 November
+  2026"). The hero drawing is an inline SVG of ordinary apps (Safari, Notes, Music, Calendar)
+  tiled with the workspace pills — screen capture isn't permitted here. Check claims against
+  the code (e.g. theme count = `Resources/Themes`).
+- Preview before publishing: render the staged page with a small WKWebView snapshot tool
+  (`takeSnapshot`) at 1280 and 390 px wide and look at it. Remove old PNGs first — a failed run
+  once left stale images that looked like the new page.
+- Open question (parked by the user): Mod+Return opens kitty even if it isn't installed; the
+  page doesn't mention kitty. A fallback to Terminal was written and reverted ("not now").
+
 ## Architecture (Sources/Shoji)
 
 | File | Role |
@@ -240,7 +269,8 @@ pick and by "Apply now".
 
 ## Ideas / next stages
 
-- Mod+drag to move / Mod+right-drag to resize (CGEventTap), multi-monitor, scrolling layout
+- Multi-monitor, scrolling layout
   (Lucent's Mod+T), animations, inactive dim, per-app rules file, wallpaper per theme.
 - Name: "Shoji" is also used by a macOS window-zone app with a pending software trademark (found
-  by the MacLucent rename check) — fine for personal use; check before any public release.
+  by the MacLucent rename check). The user published the public site anyway (2026-11-15) — worth
+  checking before anything commercial.
