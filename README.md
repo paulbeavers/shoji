@@ -33,6 +33,20 @@ notarized, so the first time macOS may refuse it — System Settings → Privacy
 **Open Anyway** (or Control-click → Open). Then open Shoji and allow it under Accessibility. The
 other Mac needs Apple Silicon, macOS 13+ and kitty (Docker for Containers) — no developer tools.
 
+### The website
+
+`web/` is the download page, published to https://shoji.pbcs.io (S3 behind CloudFront, like
+starch's site):
+
+```bash
+./scripts/package.sh       # the DMG to publish
+./scripts/deploy-web.sh    # upload the DMG (if it changed) and the page, invalidate CloudFront
+./scripts/deploy-cdn.sh    # once: certificate, CloudFront, bucket lockdown, DNS
+```
+
+The page keeps `DOWNLOAD-URL`, `DOWNLOAD-SIZE` and `RELEASE-VERSION` placeholders; the deploy
+fills them into a copy. `Shoji.dmg` on the site is always the latest.
+
 ## Machines (Linux VMs)
 
 **Mod+M** opens **Shoji Machines**, the companion app from the sibling repo `shoji-machines`

@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shoji — your Mac's windows, arranged for you</title>
+<meta name="description" content="Shoji arranges your Mac's windows side by side, automatically. No overlapping, no dragging — and ten workspaces, one click away in the menu bar.">
+<link rel="icon" type="image/png" href="assets/favicon.png">
+<link rel="stylesheet" href="style.css">
+
+<meta property="og:title" content="Shoji — your Mac's windows, arranged for you">
+<meta property="og:description" content="Shoji arranges your Mac's windows side by side, automatically. No overlapping, no dragging.">
+<meta property="og:type" content="website">
+<meta property="og:image" content="assets/shoji-icon.png">
+</head>
+
+<body>
+
+<!-- DOWNLOAD-URL, DOWNLOAD-SIZE and RELEASE-VERSION are filled in when the site is published. -->
+
+<header>
+  <div class="wrap">
+    <img class="mark" src="assets/shoji-icon.png" alt="The Shoji icon: one tall window beside two stacked ones" width="112" height="112">
+    <h1>shoji</h1>
+    <p class="tagline">Your windows, arranged for you</p>
+    <p class="lede">
+      Open an app and Shoji gives it a place beside the others. No windows
+      piled on top of each other, no dragging and resizing, no hunting for
+      the one underneath — and ten workspaces, one click away in the menu
+      bar.
+    </p>
+
+    <div class="get">
+      <a class="btn" href="DOWNLOAD-URL">Download for Mac</a>
+      <p class="meta">
+        <span>RELEASE-VERSION</span><span>macOS 13 or later</span><span>Apple silicon</span><span>DOWNLOAD-SIZE</span>
+      </p>
+    </div>
+
+    <figure class="shot" aria-label="A Mac desktop with Shoji: Safari on the left half, Notes at the top right, Music and Calendar side by side below it, and workspace numbers in the menu bar">
+      <svg viewBox="0 0 800 470" role="img" aria-hidden="true">
+        <defs>
+          <linearGradient id="focus" x1="0" y1="1" x2="1" y2="0">
+            <stop offset="0" stop-color="#cba6f7"/><stop offset="1" stop-color="#89b4fa"/>
+          </linearGradient>
+          <linearGradient id="art" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#f38ba8"/><stop offset="1" stop-color="#fab387"/>
+          </linearGradient>
+        </defs>
+        <rect x="0" y="0" width="800" height="470" rx="14" fill="#11111b" opacity=".78"/>
+
+        <!-- menu bar -->
+        <rect x="0" y="0" width="800" height="30" rx="14" fill="#181825"/>
+        <rect x="0" y="16" width="800" height="14" fill="#181825"/>
+        <text x="24" y="20" class="mb b">Safari</text>
+        <text x="76" y="20" class="mb">File</text>
+        <text x="110" y="20" class="mb">Edit</text>
+        <text x="146" y="20" class="mb">View</text>
+        <text x="186" y="20" class="mb">History</text>
+        <g transform="translate(560 7)">
+          <rect x="0" y="0" width="22" height="16" rx="8" fill="#313244"/><text x="11" y="12" class="pill">1</text>
+          <rect x="26" y="0" width="22" height="16" rx="8" fill="url(#focus)"/><text x="37" y="12" class="pill on">2</text>
+          <rect x="52" y="0" width="22" height="16" rx="8" fill="#313244"/><text x="63" y="12" class="pill">3</text>
+          <rect x="78" y="0" width="22" height="16" rx="8" fill="#313244" opacity=".5"/><text x="89" y="12" class="pill dim">4</text>
+          <rect x="104" y="0" width="22" height="16" rx="8" fill="#313244" opacity=".5"/><text x="115" y="12" class="pill dim">5</text>
+        </g>
+        <text x="760" y="20" class="mb">9:41</text>
+
+        <!-- Safari: the focused window, left half -->
+        <rect x="14" y="44" width="380" height="412" rx="12" fill="#1e1e2e" stroke="url(#focus)" stroke-width="2"/>
+        <g transform="translate(14 44)">
+          <circle cx="20" cy="18" r="5" fill="#f38ba8"/><circle cx="36" cy="18" r="5" fill="#f9e2af"/><circle cx="52" cy="18" r="5" fill="#a6e3a1"/>
+          <rect x="90" y="9" width="250" height="18" rx="6" fill="#313244"/>
+          <text x="215" y="22" class="ui c">news.example.com</text>
+          <rect x="22" y="48" width="336" height="130" rx="10" fill="#45475a"/>
+          <path d="M22 160 L110 100 L170 140 L230 90 L358 165 L358 168 Q358 178 348 178 L32 178 Q22 178 22 168 Z" fill="#585b70"/>
+          <circle cx="300" cy="78" r="14" fill="#f9e2af" opacity=".8"/>
+          <rect x="22" y="196" width="260" height="12" rx="6" fill="#cdd6f4" opacity=".85"/>
+          <rect x="22" y="216" width="200" height="12" rx="6" fill="#cdd6f4" opacity=".85"/>
+          <rect x="22" y="244" width="336" height="7" rx="3.5" fill="#6c7086"/>
+          <rect x="22" y="259" width="320" height="7" rx="3.5" fill="#6c7086"/>
+          <rect x="22" y="274" width="330" height="7" rx="3.5" fill="#6c7086"/>
+          <rect x="22" y="289" width="250" height="7" rx="3.5" fill="#6c7086"/>
+          <rect x="22" y="314" width="336" height="7" rx="3.5" fill="#6c7086"/>
+          <rect x="22" y="329" width="300" height="7" rx="3.5" fill="#6c7086"/>
+          <rect x="22" y="344" width="318" height="7" rx="3.5" fill="#6c7086"/>
+          <rect x="22" y="359" width="180" height="7" rx="3.5" fill="#6c7086"/>
+        </g>
+
+        <!-- Notes: top right -->
+        <rect x="406" y="44" width="380" height="200" rx="12" fill="#1e1e2e" stroke="#313244" stroke-width="2"/>
+        <g transform="translate(406 44)">
+          <rect x="1" y="1" width="110" height="198" rx="11" fill="#181825"/>
+          <text x="16" y="30" class="ui b">Notes</text>
+          <rect x="14" y="46" width="84" height="34" rx="6" fill="#313244"/>
+          <rect x="22" y="54" width="56" height="6" rx="3" fill="#cdd6f4" opacity=".8"/>
+          <rect x="22" y="66" width="40" height="5" rx="2.5" fill="#6c7086"/>
+          <rect x="22" y="94" width="50" height="6" rx="3" fill="#a6adc8"/>
+          <rect x="22" y="106" width="36" height="5" rx="2.5" fill="#6c7086"/>
+          <rect x="22" y="128" width="58" height="6" rx="3" fill="#a6adc8"/>
+          <rect x="22" y="140" width="30" height="5" rx="2.5" fill="#6c7086"/>
+          <text x="132" y="34" class="ui h">Weekend</text>
+          <circle cx="138" cy="58" r="5" fill="none" stroke="#cba6f7" stroke-width="1.5"/>
+          <text x="152" y="62" class="ui">Farmers market</text>
+          <circle cx="138" cy="82" r="5" fill="#cba6f7"/>
+          <text x="152" y="86" class="ui done">Book the table</text>
+          <circle cx="138" cy="106" r="5" fill="none" stroke="#cba6f7" stroke-width="1.5"/>
+          <text x="152" y="110" class="ui">Call Mum</text>
+          <circle cx="138" cy="130" r="5" fill="none" stroke="#cba6f7" stroke-width="1.5"/>
+          <text x="152" y="134" class="ui">Bike to the coast</text>
+        </g>
+
+        <!-- Music: bottom middle -->
+        <rect x="406" y="256" width="184" height="200" rx="12" fill="#1e1e2e" stroke="#313244" stroke-width="2"/>
+        <g transform="translate(406 256)">
+          <rect x="42" y="20" width="100" height="100" rx="10" fill="url(#art)"/>
+          <circle cx="92" cy="70" r="22" fill="none" stroke="#1e1e2e" stroke-width="3" opacity=".35"/>
+          <text x="92" y="142" class="ui b c">Summer Rain</text>
+          <text x="92" y="158" class="ui d c">The Lanterns</text>
+          <rect x="30" y="172" width="124" height="4" rx="2" fill="#45475a"/>
+          <rect x="30" y="172" width="70" height="4" rx="2" fill="#cba6f7"/>
+        </g>
+
+        <!-- Calendar: bottom right -->
+        <rect x="602" y="256" width="184" height="200" rx="12" fill="#1e1e2e" stroke="#313244" stroke-width="2"/>
+        <g transform="translate(602 256)">
+          <text x="18" y="30" class="ui b">November</text>
+          <g class="cal">
+            <text x="24" y="56">M</text><text x="48" y="56">T</text><text x="72" y="56">W</text><text x="96" y="56">T</text><text x="120" y="56">F</text><text x="144" y="56">S</text><text x="166" y="56">S</text>
+          </g>
+          <g class="cal n">
+            <text x="24" y="80">3</text><text x="48" y="80">4</text><text x="72" y="80">5</text><text x="96" y="80">6</text><text x="120" y="80">7</text><text x="144" y="80">8</text><text x="166" y="80">9</text>
+            <text x="24" y="104">10</text><text x="48" y="104">11</text><text x="72" y="104">12</text><text x="96" y="104">13</text>
+            <circle cx="120" cy="100" r="10" fill="url(#focus)"/><text x="120" y="104" class="today">14</text>
+            <text x="144" y="104">15</text><text x="166" y="104">16</text>
+            <text x="24" y="128">17</text><text x="48" y="128">18</text><text x="72" y="128">19</text><text x="96" y="128">20</text><text x="120" y="128">21</text><text x="144" y="128">22</text><text x="166" y="128">23</text>
+          </g>
+          <rect x="18" y="148" width="148" height="34" rx="6" fill="#313244"/>
+          <rect x="18" y="148" width="4" height="34" rx="2" fill="#89b4fa"/>
+          <text x="30" y="163" class="ui">Lunch with Sam</text>
+          <text x="30" y="176" class="ui d">12:30</text>
+        </g>
+      </svg>
+    </figure>
+  </div>
+</header>
+
+<section>
+  <div class="wrap">
+    <h2>Why arrange windows?</h2>
+    <p>
+      Most of us spend a surprising part of the day moving windows: dragging
+      one out of the way, resizing another, clicking around to find the one
+      that's hidden underneath.
+    </p>
+    <p>
+      Shoji does that for you. Every window you open gets its own space on
+      the screen, side by side with the others, and they make room for each
+      other as windows open and close. Put your mail on one workspace, your
+      browsing on another and your music on a third, and switch between them
+      in an instant.
+    </p>
+    <p>
+      It works with the apps you already use. And when you quit Shoji, every
+      window — from every workspace — comes back onto your screen.
+    </p>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>What you get</h2>
+    <div class="cards">
+      <div class="card">
+        <h3>Windows that fit together</h3>
+        <p>Each new window takes half of the space beside the current one, with neat gaps in between. Drag the line between two windows to give one more room.</p>
+      </div>
+      <div class="card">
+        <h3>Ten workspaces</h3>
+        <p>Numbered in the menu bar, next to the clock. Click one to switch — instantly, with no sliding animation.</p>
+      </div>
+      <div class="card">
+        <h3>Easy on the keyboard</h3>
+        <p>Hold Option and use the arrow keys to move between windows, or a number to change workspace. Or just use the mouse — both work.</p>
+      </div>
+      <div class="card">
+        <h3>Your look</h3>
+        <p>Pick from seventeen colour themes, dark and light. A theme can also change your wallpaper, switch the Mac between Dark and Light, and set its accent colour.</p>
+      </div>
+      <div class="card">
+        <h3>Made to measure</h3>
+        <p>Choose the gaps, the corner rounding, how see-through windows are, and which apps should always float on top instead of taking a place.</p>
+      </div>
+      <div class="card">
+        <h3>Two extras</h3>
+        <p>Shoji Machines runs Linux on your Mac, and Shoji Containers shows what Docker is running. Both are included — use them if you need them.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>A few keys to start with</h2>
+    <p>Everything works with the mouse too. Press <strong>Option&nbsp;/</strong> any time to see every shortcut.</p>
+    <table class="kit">
+      <tr><th>Option ← → ↑ ↓</th><td>Move between windows</td></tr>
+      <tr><th>Option Shift ← → ↑ ↓</th><td>Swap a window with its neighbour</td></tr>
+      <tr><th>Option 1 … 0</th><td>Go to a workspace</td></tr>
+      <tr><th>Option Shift 1 … 0</th><td>Send the window to a workspace</td></tr>
+      <tr><th>Option F</th><td>Make the window fill the screen, and back</td></tr>
+      <tr><th>Option Q</th><td>Close the window</td></tr>
+      <tr><th>Option Shift D</th><td>Open an app by typing its name</td></tr>
+      <tr><th>Option ,</th><td>Settings</td></tr>
+    </table>
+    <p style="margin-top:22px">
+      Prefer another key than Option? Settings lets you use Control-Option or
+      Command instead.
+    </p>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>Install</h2>
+    <ol class="steps">
+      <li>
+        <strong>Open the download and double-click the installer.</strong>
+        It puts Shoji and its two extras in your Applications folder.
+      </li>
+      <li>
+        <strong>If your Mac says it can't open the installer,</strong> open
+        System Settings → Privacy &amp; Security, scroll down and click
+        <em>Open Anyway</em>.
+      </li>
+      <li>
+        <strong>Open Shoji and give it permission.</strong> Your Mac asks
+        you to allow Shoji under Privacy &amp; Security → Accessibility —
+        that's what lets it move your windows. Turn it on, and Shoji starts.
+        Its workspace numbers appear in the menu bar.
+      </li>
+    </ol>
+    <p>
+      Shoji's own workspaces take the place of the Mac's Spaces, so keep to
+      a single Space. For now Shoji arranges windows on your main display
+      only.
+    </p>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>Get Shoji</h2>
+    <p>
+      For Macs with Apple silicon (M1 or newer) running macOS 13 Ventura or
+      later.
+    </p>
+    <div class="get left">
+      <a class="btn" href="DOWNLOAD-URL">Download for Mac</a>
+      <p class="meta">
+        <span>RELEASE-VERSION</span><span>DOWNLOAD-SIZE</span>
+      </p>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="links">
+      <a href="https://github.com/paulbeavers/shoji">Shoji on GitHub</a>
+    </div>
+    <p style="margin:0">
+      Shoji is an independent project and is not affiliated with Apple.
+    </p>
+  </div>
+</footer>
+</body>
+</html>
