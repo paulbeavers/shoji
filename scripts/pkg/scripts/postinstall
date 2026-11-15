@@ -1,6 +1,7 @@
 #!/bin/bash
 # Shoji.pkg postinstall (runs as root): register the apps for the logged-in user, so Shoji's
-# Mod+M / Mod+O find Shoji Machines / Shoji Containers, and restart Shoji if it was running.
+# Mod+M / Mod+O find Shoji Machines / Shoji Containers, install the bundled Nerd Fonts, and
+# restart Shoji if it was running.
 STATE=/tmp/dev.shoji.install-state
 LSREGISTER=/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
 USER_NAME="$(stat -f %Su /dev/console)"
@@ -16,6 +17,13 @@ for app in "Shoji" "Shoji Machines" "Shoji Containers"; do
   # Installed packages carry no download quarantine, but clear any that came along.
   xattr -dr com.apple.quarantine "/Applications/$app.app" 2>/dev/null || true
   as_user "$LSREGISTER" -f "/Applications/$app.app" || true
+done
+
+# The Nerd Fonts that ship inside Shoji.app → /Library/Fonts, for kitty and every other app.
+# Files only: the folder's own permissions (root:admin, sticky) are left alone.
+for font in /Applications/Shoji.app/Contents/Resources/Fonts/*.ttf; do
+  [ -f "$font" ] || continue
+  install -m 644 -o root -g wheel "$font" "/Library/Fonts/$(basename "$font")" || true
 done
 
 if grep -q shoji-was-running "$STATE" 2>/dev/null; then

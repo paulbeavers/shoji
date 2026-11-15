@@ -28,8 +28,11 @@ Requirements: macOS 13 or later, a Swift toolchain (Xcode Command Line Tools). N
 ```
 
 Copy the `.pkg` (or the `.dmg`) to the other Mac and double-click it: the macOS Installer puts
-**Shoji**, **Shoji Machines** and **Shoji Containers** in /Applications. Then open Shoji and allow
-it under Accessibility. The other Mac needs Apple Silicon and macOS 13+ (kitty is optional — ⌥↩
+**Shoji**, **Shoji Machines** and **Shoji Containers** in /Applications, and three Nerd Fonts
+(CaskaydiaCove — Cascadia Code's Nerd Font name —, JetBrainsMono and FiraCode Nerd Font Mono) in
+/Library/Fonts for Settings → Terminal → Font. They're SIL OFL fonts (licenses in
+Shoji.app/Contents/Resources/Fonts) and stay if Shoji is removed (delete them in Font Book). Then
+open Shoji and allow it under Accessibility. The other Mac needs Apple Silicon and macOS 13+ (kitty is optional — ⌥↩
 falls back to Terminal; Containers needs Docker) — no developer tools.
 
 On a Mac with **Developer ID Application** and **Developer ID Installer** certificates and a

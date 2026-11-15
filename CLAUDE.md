@@ -54,6 +54,18 @@ from a quarantined DMG anyway).
   unsigned build; `deploy-web.sh` refuses a DMG without a stapled ticket unless
   `--allow-unsigned`. Never install the package on the dev Mac from a test — inspect it with
   `pkgutil --expand-full` instead.
+- **Nerd Fonts** (user request 2026-11-15): CascadiaCode (patched name **CaskaydiaCove** —
+  Cascadia's OFL Reserved Font Name), JetBrainsMono, FiraCode from Nerd Fonts `v3.5.1`; only the
+  `*NerdFontMono-{Regular,Bold,Italic,BoldItalic}` files (not JetBrains' "NL"; Fira has no
+  italics). `package.sh` downloads the `.tar.xz` into `build/nerd-fonts/<version>` (cache),
+  checks pinned SHA-256s, and puts the fonts + license files in the **staged Shoji.app**
+  (`Contents/Resources/Fonts`; unsigned builds re-sign it ad hoc, signed ones get the Developer
+  ID). `postinstall` copies them into `/Library/Fonts` with `install -m 644`. Never put
+  `/Library/Fonts` in the payload: Installer would apply the package's permissions to that
+  existing folder (root:admin 1775). Payload compression `--compression latest
+  --min-os-version 13.0` (17 MB → 8.8 MB). kitty already bundles Symbols Nerd Font, so icons
+  work in any font; the bundled fonts are about choice. To update: bump `NERD_VERSION` and the
+  three hashes from the release's `SHA-256.txt`.
 - First signed install on a Mac: the Developer ID signature is a new identity for macOS privacy
   settings, so Shoji's Accessibility permission (and System Events control) is asked for again.
 - `write: Permission denied` (×4) during packaging is noise from the sandboxed shell; the

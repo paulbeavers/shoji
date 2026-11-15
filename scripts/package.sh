@@ -21,6 +21,18 @@ PARENT="$(dirname "$ROOT")"
 
 REPOS=("$ROOT" "$PARENT/shoji-machines" "$PARENT/shoji-containers")
 APPS=("build/Shoji.app" "build/Shoji Machines.app" "build/Shoji Containers.app")
+# Nerd Fonts bundled with the installer (user request 2026-11-15): the Mono variant's four
+# styles of each family (Fira Code has no italics). They ship inside Shoji.app
+# (Contents/Resources/Fonts, with their SIL OFL licenses) and the installer's postinstall copies
+# them into /Library/Fonts — the package never carries /Library/Fonts itself, which could reset
+# that folder's permissions. Downloads are cached in build/nerd-fonts/<version> and checked
+# against these pinned SHA-256s (from the release's SHA-256.txt).
+NERD_VERSION="v3.5.1"
+NERD_FAMILIES=(CascadiaCode JetBrainsMono FiraCode)
+NERD_SHA256=(ae598e9401e2846aa3ee364513715de0490b844a4b54f0768991f45f23aa8369
+             04d5e8f903693f9dd13e16f867e994834e681eb3c72c0d337a770dcda09010cf
+             68e3bd6164864b8b514605bc34e3a87ac401c8c48682fcce6478c70263340207)
+
 # Entitlements for the release signature (none = no file).
 ENTITLEMENTS=("$ROOT/Resources/Shoji.entitlements" "$PARENT/shoji-machines/Resources/Machines.entitlements" "")
 
@@ -73,6 +85,36 @@ for repo in "${REPOS[@]}"; do
   (cd "$repo" && ./scripts/build-app.sh)
 done
 
+echo "==> Nerd Fonts $NERD_VERSION"
+FONT_CACHE="build/nerd-fonts/$NERD_VERSION"
+FONTS="build/nerd-fonts/staged"
+rm -rf "$FONTS" && mkdir -p "$FONT_CACHE" "$FONTS"
+for i in "${!NERD_FAMILIES[@]}"; do
+  fam="${NERD_FAMILIES[$i]}"
+  archive="$FONT_CACHE/$fam.tar.xz"
+  if [ ! -f "$archive" ] || [ "$(shasum -a 256 "$archive" | cut -d' ' -f1)" != "${NERD_SHA256[$i]}" ]; then
+    curl -fsSL --retry 3 -o "$archive.part" \
+      "https://github.com/ryanoasis/nerd-fonts/releases/download/$NERD_VERSION/$fam.tar.xz"
+    mv "$archive.part" "$archive"
+  fi
+  [ "$(shasum -a 256 "$archive" | cut -d' ' -f1)" = "${NERD_SHA256[$i]}" ] \
+    || { echo "checksum mismatch for $fam.tar.xz — refusing to package it" >&2; rm -f "$archive"; exit 1; }
+  tmp="$(mktemp -d)"
+  tar -xJf "$archive" -C "$tmp"
+  n=0
+  for style in Regular Bold Italic BoldItalic; do
+    for f in "$tmp"/*NerdFontMono-"$style".ttf; do
+      [ -f "$f" ] || continue
+      case "$(basename "$f")" in *NLNerdFont*) continue ;; esac # JetBrains Mono "NL": no ligatures
+      cp "$f" "$FONTS/" && n=$((n + 1))
+    done
+  done
+  for lic in LICENSE OFL.txt; do [ -f "$tmp/$lic" ] && cp "$tmp/$lic" "$FONTS/$fam-LICENSE.txt"; done
+  rm -rf "$tmp"
+  [ $n -gt 0 ] || { echo "no Mono fonts found in $fam.tar.xz" >&2; exit 1; }
+  echo "    $fam: $n styles"
+done
+
 COMMIT="$(git rev-parse --short HEAD 2>/dev/null || echo dev)"
 STAMP="$(date +%Y%m%d)"
 VERSION="0.1.$(date +%Y%m%d%H%M)"          # increases with every package (for upgrades)
@@ -84,6 +126,15 @@ echo "==> Packaging $NAME"
 for i in "${!REPOS[@]}"; do
   app="$WORK/root/Applications/$(basename "${APPS[$i]}")"
   ditto --norsrc --noextattr "${REPOS[$i]}/${APPS[$i]}" "$app"
+  if [ "$(basename "$app")" = "Shoji.app" ]; then
+    # The fonts travel in Shoji.app; postinstall copies them into /Library/Fonts.
+    mkdir -p "$app/Contents/Resources/Fonts"
+    cp "$FONTS"/* "$app/Contents/Resources/Fonts/"
+    chmod 644 "$app/Contents/Resources/Fonts/"*
+    # Adding files breaks the build's ad-hoc signature: unsigned packages re-sign it ad hoc
+    # (same designated requirement as build-app.sh); signed ones get the Developer ID below.
+    [ $SIGNED -eq 1 ] || codesign --force --sign - -r='designated => identifier "dev.shoji.Shoji"' "$app"
+  fi
   if [ $SIGNED -eq 1 ]; then
     # Developer ID + hardened runtime + secure timestamp: what notarization requires. (The
     # build scripts' ad-hoc signatures stay for development builds.)
@@ -106,8 +157,12 @@ for i in $(seq 0 2); do
   plset ":$i:BundleIsVersionChecked" bool false
   plset ":$i:BundleOverwriteAction" string upgrade
 done
+# Modern payload compression (macOS 13+, which the installer requires anyway): with the fonts
+# it halves the package (17 MB → 9 MB). pkgbuild prints "write: Permission denied" lines in a
+# sandboxed shell — harmless.
 pkgbuild --quiet --root "$WORK/root" --component-plist "$WORK/components.plist" --identifier dev.shoji.pkg \
-  --version "$VERSION" --install-location / --scripts scripts/pkg/scripts "$WORK/Shoji-component.pkg"
+  --version "$VERSION" --install-location / --scripts scripts/pkg/scripts \
+  --compression latest --min-os-version 13.0 "$WORK/Shoji-component.pkg"
 
 cat > "$WORK/distribution.xml" <<EOF
 <?xml version="1.0" encoding="utf-8"?>
@@ -137,6 +192,7 @@ cp "$PKG" "$WORK/dmg/Install Shoji.pkg"
 {
   echo "Built $(date '+%Y-%m-%d %H:%M') on $(sw_vers -productName) $(sw_vers -productVersion), $(uname -m)"
   echo "Package version $VERSION"
+  echo "Nerd Fonts $NERD_VERSION: ${NERD_FAMILIES[*]}"
   for repo in "${REPOS[@]}"; do
     c="$(git -C "$repo" rev-parse --short HEAD 2>/dev/null || echo unknown)"
     [ -n "$(git -C "$repo" status --porcelain 2>/dev/null)" ] && c="$c (modified)"
@@ -154,7 +210,12 @@ GATEKEEPER_NOTE
 After installing: open Shoji and allow it in System Settings → Privacy & Security →
 Accessibility. ⌥/ lists every keybinding.
 
-Needs an Apple Silicon Mac with macOS 13 or later, and kitty (brew install --cask kitty).
+Also installs three Nerd Fonts into /Library/Fonts for the terminal: CaskaydiaCove (Cascadia
+Code), JetBrainsMono and FiraCode Nerd Font Mono — pick one in Shoji's Settings → Terminal. They
+are SIL Open Font License fonts (licenses in /Applications/Shoji.app/Contents/Resources/Fonts)
+and stay installed if Shoji is removed; delete them in Font Book if you don't want them.
+
+Needs an Apple Silicon Mac with macOS 13 or later. kitty is optional (⌥↩ opens Terminal without it).
 Shoji Containers needs Docker Desktop, OrbStack or Colima. Settings and VMs live in
 ~/.config/shoji.
 EOF
