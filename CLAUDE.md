@@ -369,48 +369,63 @@ sha256) and pushing the tap. The name "shoji" is free in Homebrew. A .pkg cask a
 password; an `app`-stanza cask (+ font stanzas) would not, at the cost of a second package format.
 Install: `brew install --cask paulbeavers/shoji/shoji`.
 
-### Rename to Shitomi (decided 2026-11-15, on hold — the user will do it later)
-**Why:** "Shoji" is crowded — at least five Mac apps use it, two of them window tilers:
+### Rename to Tilana (decided 2026-11-15, on hold — the user will do it later)
+**Why rename:** "Shoji" is crowded — at least five Mac apps use it, two of them window tilers:
 shojimac.com (a paid automatic tiler, very close to this app), github.com/dvrd/shoji (an
 open-source macOS tiling WM that also uses `~/.config/shoji`), getshoji.com (window zones, $4.99;
-likely the pending trademark), plus a menu-bar dock/snapping app and a privacy screen. No USPTO
-software registration for "Shoji" was found, but a same-name, same-category paid app is the risk.
+likely the pending trademark), plus a menu-bar dock/snapping app and a privacy screen.
 
-**Name research (2026-11-15):** Shitomi (蔀, hinged lattice shutters on old Japanese buildings)
-was clean everywhere: no apps, no GitHub projects; shitomi.app/.io had no DNS (likely free;
-shitomi.com taken). Runners-up: Muntin (only a 0-star Windows layout repo; muntin.io free?),
-Mullion (a 70★ Mac project — D3D on Metal for games — so some confusion). Rejected as taken by
-similar tools: Kumiko (aimuzov/kumiko, a macOS tiling WM), Panewright (macOS tiling), Ranma
-(Hyprland-like terminal WM + a macOS status bar), Sudare (commercial Mac launcher), Transom,
-Noren, Amado, Koshi (small Mac/terminal utilities), Engawa (Mac writing app), Tessera (confusable
-with Tesseract; domains taken). Still to do: a USPTO search (tmsearch.uspto.gov, classes 9/42).
-Signing certificates are unaffected (Developer ID is per developer; no App IDs outside the store).
+**Why Tilana:** an invented name ("tee-LAH-nah": *tile* + the soft sound of *lanai*), chosen by the
+user. The app's purpose — a Linux desktop feel on the Mac — goes in the tagline, not the name
+(e.g. "the Linux desktop feel, on your Mac"), as AeroSpace/yabai/Amethyst do.
+Research (2026-11-15):
+- Domains (registry RDAP): tilana.app, tilana.io, tilana.dev unregistered; tilana.com taken.
+  Not registered yet — the user may buy one; `tilana.pbcs.io` works without it.
+- No software uses it; GitHub has only empty personal repos. Tilana Systems (San Diego online
+  storage software) is permanently closed. Unrelated: Hermès "Tilana" espadrilles, a Singapore
+  laundry, a UK beauty company. Close to *tillana* (Indian classical music/dance) — positive.
+- Trademarks: no TILANA record on Justia/TrademarkElite/Trademarkia/uspto.report. Look-alikes:
+  TALINA (uspto.report 99581256, recent application, goods unknown — check if class 9/42), TILIA
+  (Tilia LLC, payments), TILA/TRILANA (unrelated). The direct USPTO query was blocked for Claude;
+  **the user still has to search tilana and talina at tmsearch.uspto.gov** (classes 9/42).
+- Signing certificates are unaffected (Developer ID is per developer; no App IDs outside the store).
 
-**Plan (shown to the user, approved name, not started):**
-1. Names: Shitomi / Shitomi Machines / Shitomi Containers; bundle ids `dev.shitomi.Shitomi`,
-   `.Machines`, `.Containers`; targets `Shitomi`, `ShitomiMachines`, `ShitomiContainers`; types
-   (`ShojiLog` → `ShitomiLog`, …); `~/.config/shitomi/shitomi.conf`; `~/Library/Logs/Shitomi`;
-   `SHOJI_*` env → `SHITOMI_*`; cross-app `dev.shoji.*` notifications → `dev.shitomi.*` (all three
-   apps together); installer ids `dev.shitomi.pkg`. Keep the `shoji-notary` keychain label.
-2. Migration: on first launch, if `~/.config/shitomi` is missing and `~/.config/shoji` exists, move
+**Names rejected (don't suggest again):** Shitomi (starts with "shit" — user caught it); Tilewyn
+and anything with "win"/"wyn" (sounds like Microsoft Windows); Kumiko, Panewright, Ranma, Floe,
+Wintrix, MacTile, Mosaic, Grout, Parquet (existing tiling/window tools); Sudare, Transom, Noren,
+Amado, Koshi, Engawa, Lintel, Sash, Inlay, Wobbly, Tokonoma (other Mac apps/tools); Mullion
+(a Mac project + a Windows toolkit); Daisy (DaisyDisk, daisyUI), Doodle (Doodle.com), Penguin,
+Tux, Tuxedo, Huddle, Rookery, Lanai (OpenJDK Lanai, Lanai Software), Rogo (Rogo AI), Roga
+(Sanskrit "disease", Russian "horns"), DevSpaces (Red Hat Dev Spaces, DevSpace), Tessera,
+Gridix, Quiltix, Panai, Panux, Tilux, Mado, Yukimi, Distro, Swayed; Ricer (slur origin), Waymac /
+Tuxmac (Apple's "Mac" trademark). Clean runners-up: Tilenix (all domains free), Rootix, Muntin,
+Muntix, Orilai.
+
+**Plan (shown to the user, not started):**
+1. Names: Tilana / Tilana Machines / Tilana Containers; bundle ids `dev.tilana.Tilana`,
+   `.Machines`, `.Containers`; targets `Tilana`, `TilanaMachines`, `TilanaContainers`; types
+   (`ShojiLog` → `TilanaLog`, …); `~/.config/tilana/tilana.conf`; `~/Library/Logs/Tilana`;
+   `SHOJI_*` env → `TILANA_*`; cross-app `dev.shoji.*` notifications → `dev.tilana.*` (all three
+   apps together); installer ids `dev.tilana.pkg`. Keep the `shoji-notary` keychain label.
+2. Migration: on first launch, if `~/.config/tilana` is missing and `~/.config/shoji` exists, move
    it (instant on one volume, VMs included) and rename `shoji.conf`; kitty.conf's
-   `include shoji.conf` → `include shitomi.conf` (rename the file; leave `.before-shoji` backups).
+   `include shoji.conf` → `include tilana.conf` (rename the file; leave `.before-shoji` backups).
    The installer quits old Shoji apps (VMs shut down cleanly) and removes `/Applications/Shoji*.app`.
    Fonts stay. Users re-grant Accessibility (new bundle id); the old entry lingers.
-3. GitHub: rename the repos to `shitomi`, `shitomi-machines`, `shitomi-containers` (GitHub
+3. GitHub: rename the repos to `tilana`, `tilana-machines`, `tilana-containers` (GitHub
    redirects), update remotes, rename `~/gitwork/shoji*` folders (package.sh finds siblings by
    name); update all CLAUDE.md files, MacLucent's mention, and Claude's memory notes.
-4. Website: `shitomi.pbcs.io` with a new bucket, certificate and CloudFront (deploy-cdn.sh);
-   page text, asset and DMG names (`Shitomi.dmg` = latest); `shoji.pbcs.io` → a CloudFront
-   Function 301-redirecting every path (old `Shoji.dmg` → newest `Shitomi.dmg`); keep the old
-   bucket for now.
+4. Website: `tilana.pbcs.io` (or the user's own domain) with a new bucket, certificate and
+   CloudFront (deploy-cdn.sh); page text, asset and DMG names (`Tilana.dmg` = latest);
+   `shoji.pbcs.io` → a CloudFront Function 301-redirecting every path (old `Shoji.dmg` → newest
+   `Tilana.dmg`); keep the old bucket for now.
 5. Order: rename + warning-free build → test the migration on scratch copies only (never the
    user's folders; never run the WM) → the user switches (`pkill -x Shoji; sleep 1; open
-   ~/gitwork/shitomi/build/Shitomi.app`), grants Accessibility, checks settings/session/VMs →
-   on "commit and push", one "Rename to Shitomi" commit per repo, then repo/folder renames →
+   ~/gitwork/tilana/build/Tilana.app`), grants Accessibility, checks settings/session/VMs →
+   on "commit and push", one "Rename to Tilana" commit per repo, then repo/folder renames →
    signed release, new site, redirect, verify.
 Open questions for the user: keep old `Shoji-….dmg` downloads in the old bucket? Register
-`shitomi.app` (optional — `shitomi.pbcs.io` doesn't need it)?
+tilana.app / .io?
 
 ### Compared with AeroSpace / yabai / Amethyst (2026-11-15)
 Shoji's gaps, beyond multi-monitor: a single layout (no master/stack, columns, accordion), no
