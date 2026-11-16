@@ -50,7 +50,9 @@ final class WindowManager {
             guard let app = n.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication else { return }
             MainActor.assumeIsolated {
                 self?.recentLaunches[app.processIdentifier] = Date()
-                // An app's Accessibility interface is ready a moment after launch.
+                // Watch closely for its first window; an app's Accessibility interface is ready a
+                // moment after launch, so also look again a little later.
+                if let id = app.bundleIdentifier { self?.expectWindow(of: id, for: 5) }
                 for delay in [0.3, 1.0, 2.5] {
                     DispatchQueue.main.asyncAfter(deadline: .now() + delay) { self?.observe(app) }
                 }
@@ -140,10 +142,16 @@ final class WindowManager {
             guard AXObserverCreate(pid, axCallback, &obs) == .success, let obs else { return }
             let appElement = AXUIElementCreateApplication(pid)
             AXUIElementSetMessagingTimeout(appElement, 1.0) // a hung app mustn't freeze Shoji for long
+            var failed = false
             for n in [kAXWindowCreatedNotification, kAXFocusedWindowChangedNotification,
                       kAXApplicationHiddenNotification, kAXApplicationShownNotification] {
-                AXObserverAddNotification(obs, appElement, n as CFString, refcon)
+                let err = AXObserverAddNotification(obs, appElement, n as CFString, refcon)
+                if err != .success && err != .notificationAlreadyRegistered && err != .notificationUnsupported { failed = true }
             }
+            // Looked at the instant it launched, an app may not be able to register yet: try again
+            // shortly (watchExpected does) rather than keep an observer that never hears anything.
+            // An older app that still refuses (busy) keeps what worked, as before.
+            if failed, let t = recentLaunches[pid], Date().timeIntervalSince(t) < 5 { return }
             CFRunLoopAddSource(CFRunLoopGetMain(), AXObserverGetRunLoopSource(obs), .commonModes)
             observers[pid] = obs
             appElements[pid] = appElement
@@ -221,10 +229,11 @@ final class WindowManager {
 
     /// Manage a window. `isNew`: it just opened (focus it, as Hyprland does). Windows that aren't
     /// fully formed yet (no id, no subrole — some apps fill these in a moment later) are retried.
-    private func addWindow(_ e: AXUIElement, pid: pid_t, isNew: Bool = false, attempt: Int = 0) {
+    private func addWindow(_ e: AXUIElement, pid: pid_t, isNew: Bool = false, attempt: Int = 0, retries: Bool = true) {
         if pid == getpid(), !(AX.windowID(e).map { ownTiled.contains($0) } ?? false) { return } // Settings etc.
         let appName = NSRunningApplication(processIdentifier: pid)?.localizedName ?? "pid \(pid)"
         func retryLater(_ why: String) {
+            guard retries else { return } // the caller looks again soon anyway
             guard attempt < 3 else { ShojiLog.write("ignored \(appName): \(why)"); return }
             DispatchQueue.main.asyncAfter(deadline: .now() + [0.25, 0.6, 1.2][attempt]) { [weak self] in
                 self?.addWindow(e, pid: pid, isNew: isNew, attempt: attempt + 1)
@@ -312,6 +321,7 @@ final class WindowManager {
         let w = ManagedWindow(id: id, pid: pid, element: e, workspace: current.index, floating: floating)
         w.floatFrame = floatFrame
         windows[id] = w
+        expected[bundle] = nil // the window we were watching for
         if let obs = observers[pid] {
             for n in [kAXUIElementDestroyedNotification, kAXWindowMovedNotification, kAXWindowResizedNotification,
                       kAXWindowMiniaturizedNotification, kAXWindowDeminiaturizedNotification, kAXTitleChangedNotification] {
@@ -477,6 +487,39 @@ final class WindowManager {
             if n > managed { result.insert(pid) }
         }
         return result
+    }
+
+    // MARK: Watching for a window that's on its way
+
+    /// Apps expected to open a window soon (bundle id → until when): Shoji asked for one (Mod+Return,
+    /// the launcher) or the app just launched. Many apps (kitty, Electron apps) never announce new
+    /// windows, and the 2-second rescan made them wait up to 2 s at their own size before tiling.
+    private var expected: [String: Date] = [:]
+    private var watching = false
+
+    /// Look for the app's new window every 50 ms until it shows up (or `seconds` pass).
+    func expectWindow(of bundleID: String, for seconds: TimeInterval = 3) {
+        expected[bundleID] = max(expected[bundleID] ?? .distantPast, Date().addingTimeInterval(seconds))
+        if !watching {
+            watching = true
+            watchExpected()
+        }
+    }
+
+    private func watchExpected() {
+        let now = Date()
+        expected = expected.filter { $0.value > now }
+        guard !expected.isEmpty else { watching = false; return }
+        for id in expected.keys {
+            for app in NSRunningApplication.runningApplications(withBundleIdentifier: id) {
+                let pid = app.processIdentifier
+                if appElements[pid] == nil { observe(app) } // just launched: not ready the first time(s)
+                guard let el = appElements[pid] else { continue }
+                // (No retries of their own: this runs again in 50 ms.)
+                for e in AX.windows(ofApp: el) where lookup(e) == nil { addWindow(e, pid: pid, isNew: true, retries: false) }
+            }
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in self?.watchExpected() }
     }
 
     /// Apps launched recently (pid → when), rescanned for a minute.

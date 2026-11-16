@@ -47,6 +47,11 @@ enum Programs {
     static func newWindow(_ bundleID: String) {
         if let app = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID).first {
             WindowManager.shared?.holdWorkspace() // the new window opens here, not where the app's others are
+            WindowManager.shared?.expectWindow(of: bundleID)
+            if app.isActive { // already in front: no need to wait for it to come forward
+                postCommandN(to: app.processIdentifier)
+                return
+            }
             AX.set(AXUIElementCreateApplication(app.processIdentifier), kAXFrontmostAttribute, kCFBooleanTrue)
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
                 postCommandN(to: app.processIdentifier)
@@ -85,6 +90,7 @@ enum Programs {
     }
 
     static func launch(url: URL) {
+        if let id = Bundle(url: url)?.bundleIdentifier { WindowManager.shared?.expectWindow(of: id) }
         let config = NSWorkspace.OpenConfiguration()
         config.activates = true
         NSWorkspace.shared.openApplication(at: url, configuration: config)
