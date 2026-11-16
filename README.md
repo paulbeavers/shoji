@@ -126,3 +126,8 @@ a red banner (the rest still applies); `Shoji --check-config` prints what it und
 - Windows of hidden workspaces are parked just off the bottom-right corner of the screen.
 - Fixed-size windows, dialogs and the apps listed in Settings → Programs → Always float, float.
 - Native full-screen windows (green button) are left to macOS.
+
+## License
+
+MIT — see [LICENSE](LICENSE). The bundled Nerd Fonts (Cascadia Code, JetBrains Mono, Fira Code)
+keep their own SIL Open Font License.
