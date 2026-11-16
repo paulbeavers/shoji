@@ -126,15 +126,18 @@ echo "==> Packaging $NAME"
 for i in "${!REPOS[@]}"; do
   app="$WORK/root/Applications/$(basename "${APPS[$i]}")"
   ditto --norsrc --noextattr "${REPOS[$i]}/${APPS[$i]}" "$app"
+  # The MIT license travels with every copy of each app.
+  install -m 644 "${REPOS[$i]}/LICENSE" "$app/Contents/Resources/LICENSE.txt"
   if [ "$(basename "$app")" = "Shoji.app" ]; then
     # The fonts travel in Shoji.app; postinstall copies them into /Library/Fonts.
     mkdir -p "$app/Contents/Resources/Fonts"
     cp "$FONTS"/* "$app/Contents/Resources/Fonts/"
     chmod 644 "$app/Contents/Resources/Fonts/"*
-    # Adding files breaks the build's ad-hoc signature: unsigned packages re-sign it ad hoc
-    # (same designated requirement as build-app.sh); signed ones get the Developer ID below.
-    [ $SIGNED -eq 1 ] || codesign --force --sign - -r='designated => identifier "dev.shoji.Shoji"' "$app"
   fi
+  # Adding files breaks the build's ad-hoc signature: unsigned packages re-sign it ad hoc
+  # (keeping the build's designated requirement and entitlements); signed ones get the
+  # Developer ID below.
+  [ $SIGNED -eq 1 ] || codesign --force --sign - --preserve-metadata=identifier,entitlements,requirements "$app"
   if [ $SIGNED -eq 1 ]; then
     # Developer ID + hardened runtime + secure timestamp: what notarization requires. (The
     # build scripts' ad-hoc signatures stay for development builds.)
@@ -189,6 +192,7 @@ productbuild --quiet --distribution "$WORK/distribution.xml" --package-path "$WO
 
 # The DMG: the installer, a README and the build's versions.
 cp "$PKG" "$WORK/dmg/Install Shoji.pkg"
+cp "$ROOT/LICENSE" "$WORK/dmg/LICENSE.txt"
 {
   echo "Built $(date '+%Y-%m-%d %H:%M') on $(sw_vers -productName) $(sw_vers -productVersion), $(uname -m)"
   echo "Package version $VERSION"
@@ -218,6 +222,9 @@ and stay installed if Shoji is removed; delete them in Font Book if you don't wa
 Needs an Apple Silicon Mac with macOS 13 or later. kitty is optional (⌥↩ opens Terminal without it).
 Shoji Containers needs Docker Desktop, OrbStack or Colima. Settings and VMs live in
 ~/.config/shoji.
+
+Shoji is free and open source under the MIT license (LICENSE.txt; also in each app's
+Contents/Resources). Source: https://github.com/paulbeavers/shoji
 EOF
 if [ $SIGNED -eq 1 ]; then
   note="The installer is signed by the developer and notarized by Apple."
